@@ -1,0 +1,202 @@
+# File: generator.py
+# Chứa logic tạo level từ hàm generate_hybrid_level.
+# Đã được tái cấu trúc (refactored) để loại bỏ các phụ thuộc GUI
+# và nhận các đối tượng cần thiết làm tham số để dễ dàng unit test.
+
+import random
+
+# --- DATA STRUCTURES (Phụ thuộc) ---
+class Arrow:
+    """
+    Một cấu trúc dữ liệu đơn giản để chứa thông tin mũi tên.
+    Trích xuất từ file gốc.
+    """
+    def __init__(self, points, direction, layer_id, arrow_id, color):
+        self.points = points
+        self.direction = direction
+        self.layer_id = layer_id
+        self.id = arrow_id
+        self.color = color
+
+# --- LOGIC (Phụ thuộc) ---
+# Lớp Validator cũng cần thiết ở đây vì generator gọi nó.
+# Bạn có thể import từ file validator.py thay vì định nghĩa lại.
+# (Để file này độc lập, tôi sẽ sao chép nó vào đây)
+
+class Validator:
+    def __init__(self):
+        self.memo = {}
+    def clear_cache(self):
+        self.memo.clear()
+    def _can_arrow_exit_cleanly(self, arrow_to_check, other_arrows, grid_w, grid_h):
+        obstacle_points = {p for arr in other_arrows for p in arr.points}
+        self_body_points = set(arrow_to_check.points[1:])
+        all_obstacles = obstacle_points.union(self_body_points)
+        head = arrow_to_check.points[0]; direction = arrow_to_check.direction
+        current_pos = (head[0] + direction[0], head[1] + direction[1])
+        while 0 <= current_pos[0] < grid_w and 0 <= current_pos[1] < grid_h:
+            if current_pos in all_obstacles: return False
+            current_pos = (current_pos[0] + direction[0], current_pos[1] + direction[1])
+        return True
+    def find_movable_arrows(self, all_arrows, grid_w, grid_h):
+        return [arr for i, arr in enumerate(all_arrows) if self._can_arrow_exit_cleanly(arr, all_arrows[:i] + all_arrows[i+1:], grid_w, grid_h)]
+    def is_board_state_solvable(self, arrows, grid_w, grid_h):
+        board_key = frozenset(arr.id for arr in arrows)
+        if board_key in self.memo: return self.memo[board_key]
+        if not arrows: self.memo[board_key] = True; return True
+        movable_arrows = self.find_movable_arrows(arrows, grid_w, grid_h)
+        if not movable_arrows: self.memo[board_key] = False; return False
+        movable_ids = {arr.id for arr in movable_arrows}
+        next_state = [arr for arr in arrows if arr.id not in movable_ids]
+        result = self.is_board_state_solvable(next_state, grid_w, grid_h)
+        self.memo[board_key] = result; return result
+
+# --- LỚP GENERATOR ĐÃ TÁI CẤU TRÚC ---
+
+class HybridLevelGeneratorTestable:
+    """
+    Bao bọc logic 'generate_hybrid_level' và các hàm phụ trợ của nó.
+    Hàm chính đã được điều chỉnh để trả về kết quả thay vì sửa đổi
+    trạng thái GUI.
+    """
+    
+    def __init__(self):
+        pass # Không cần trạng thái
+
+    def _perform_random_walk(self, start_pos, all_occupied_points, editable_area, gen_grid_w, gen_grid_h, max_len=30):
+        """
+        Trích xuất trực tiếp từ lớp MainWindow.
+        """
+        path = [start_pos]; visited = {start_pos}; current_pos = start_pos
+        for _ in range(int(max_len) - 1):
+            x, y = current_pos; neighbors = []
+            for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                nx, ny = x + dx, y + dy; neighbor = (nx, ny)
+                if not (0 <= nx < gen_grid_w and 0 <= ny < gen_grid_h): continue
+                if neighbor not in editable_area: continue
+                if neighbor not in all_occupied_points and neighbor not in visited: neighbors.append(neighbor)
+            if not neighbors: break
+            next_pos = random.choice(neighbors)
+            path.append(next_pos); visited.add(next_pos); current_pos = next_pos
+        return path
+        
+    def generate_hybrid_level(self, validator, active_layer, all_arrows_on_board, start_arrow_id, num_to_gen, avg_length):
+        """
+        Phiên bản tái cấu trúc của MainWindow.generate_hybrid_level.
+        Loại bỏ các lệnh gọi GUI (statusBar, QApplication) và nhận các
+        đối tượng (validator, active_layer) làm tham số.
+        
+        Trả về: (list_of_new_arrows, last_arrow_id, status_message)
+        """
+        print("Generating level in painted area... (This will be slow)")
+        
+        if not active_layer:
+            return [], start_arrow_id, "No active layer selected."
+        
+        editable_area = active_layer.editable_area
+        if not editable_area:
+            return [], start_arrow_id, "Active layer has no painted area to generate in."
+
+        max_retries_per_arrow = 100
+        
+        # 3. Tính toán ranh giới và độ lệch (offset) CỦA editable_area
+        min_x = min(p[0] for p in editable_area); min_y = min(p[1] for p in editable_area)
+        max_x = max(p[0] for p in editable_area); max_y = max(p[1] for p in editable_area)
+        gen_offset_x = -min_x; gen_offset_y = -min_y
+        gen_grid_w = max_x - min_x + 1; gen_grid_h = max_y - min_y + 1
+        
+        # 4. Dịch chuyển (shift) các đối tượng vào "Thế giới ảo"
+        gen_editable_area = {(p[0] + gen_offset_x, p[1] + gen_offset_y) for p in editable_area}
+        gen_arrows_on_board = []; gen_occupied_points = set()
+        for arrow in all_arrows_on_board:
+            is_in_area = False; shifted_points = []
+            for p in arrow.points:
+                if p in editable_area: is_in_area = True
+                shifted_points.append((p[0] + gen_offset_x, p[1] + gen_offset_y))
+            if is_in_area:
+                virtual_arrow = Arrow(shifted_points, arrow.direction, arrow.layer_id, arrow.id, arrow.color)
+                gen_arrows_on_board.append(virtual_arrow)
+                for p_shifted, p_original in zip(shifted_points, arrow.points):
+                    if p_original in editable_area: gen_occupied_points.add(p_shifted)
+        
+        newly_generated_arrows = []
+        arrow_id_counter = start_arrow_id # Sử dụng ID được truyền vào
+        default_color = active_layer.color
+        
+        # === MODIFICATION START: Sử dụng Avg. Length từ UI ===
+        # (Sử dụng avg_length được truyền vào)
+        min_len = max(2, int(avg_length * 0.5)) 
+        max_len = int(avg_length * 1.5)
+        max_walk_len = max_len 
+        # === MODIFICATION END ===
+
+        for i in range(num_to_gen):
+            print(f"Trying to generate arrow {i+1}/{num_to_gen}...")
+            found_arrow = False
+            for retry in range(max_retries_per_arrow):
+                p2_candidates = []
+                for pos in gen_editable_area:
+                    if pos not in gen_occupied_points: p2_candidates.append(pos)
+                if not p2_candidates: break
+                random.shuffle(p2_candidates)
+                start_p2 = None; p1 = None; found_start_pair = False
+                for p2_cand in p2_candidates:
+                    p1_candidates = []
+                    for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                        p1_cand = (p2_cand[0] + dx, p2_cand[1] + dy)
+                        if p1_cand in gen_editable_area and p1_cand not in gen_occupied_points:
+                            p1_candidates.append(p1_cand)
+                    if p1_candidates:
+                        p1 = random.choice(p1_candidates); start_p2 = p2_cand
+                        found_start_pair = True; break
+                if not found_start_pair: break
+
+                temp_occupied = gen_occupied_points.union({p1}) 
+                path_body = self._perform_random_walk(
+                    start_p2, temp_occupied, gen_editable_area, 
+                    gen_grid_w, gen_grid_h, 
+                    max_len=max_walk_len - 1
+                )
+                
+                path = [p1] + path_body
+                
+                # === MODIFICATION START: Lọc độ dài ===
+                if not (min_len <= len(path) <= max_len):
+                    continue # Path quá ngắn hoặc quá dài -> Hủy, thử lại
+                # === MODIFICATION END ===
+                    
+                direction = (p1[0] - start_p2[0], p1[1] - start_p2[1])
+                temp_arrow = Arrow(path, direction, active_layer.id, arrow_id_counter, default_color)
+
+                hypothetical_board = gen_arrows_on_board + newly_generated_arrows + [temp_arrow]
+                validator.clear_cache()
+                
+                is_solvable = validator.is_board_state_solvable(
+                    hypothetical_board, gen_grid_w, gen_grid_h
+                )
+                if is_solvable:
+                    newly_generated_arrows.append(temp_arrow)
+                    gen_occupied_points.update(path)
+                    arrow_id_counter += 1
+                    found_arrow = True
+                    break 
+            
+            if not found_arrow:
+                status_msg = f"Could not find valid arrow {i+1}. Stopping."
+                print(status_msg)
+                # Phải dừng và trả về kết quả hiện tại
+                break # Thoát khỏi vòng lặp 'num_to_gen'
+
+        if not newly_generated_arrows:
+            return [], arrow_id_counter, "Generation complete, but 0 valid arrows found. Try again."
+            
+        final_arrows_to_add = []
+        for arrow in newly_generated_arrows:
+            original_points = [(p[0] - gen_offset_x, p[1] - gen_offset_y) for p in arrow.points]
+            real_arrow = Arrow(original_points, arrow.direction, active_layer.id, arrow.id, arrow.color)
+            final_arrows_to_add.append(real_arrow)
+        
+        status_msg = f"Successfully generated {len(final_arrows_to_add)} arrows!"
+        print(status_msg)
+        
+        return final_arrows_to_add, arrow_id_counter, status_msg

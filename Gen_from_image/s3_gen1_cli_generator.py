@@ -6,9 +6,12 @@ import sys
 import argparse
 from collections import defaultdict
 
+from types import SimpleNamespace
+
 # Import logic đã trích xuất
 from validator import Validator, Arrow
 from generator import HybridLevelGeneratorTestable
+from helper import Args
 
 # --- LỚP GIẢ LẬP (MOCK OBJECT) ---
 class MockLayer:
@@ -19,16 +22,6 @@ class MockLayer:
         self.arrows = []
 
 # --- HÀM HELPER (Không thay đổi) ---
-class FakeParser():
-    def __init__(self, data: dict):
-        self.input_file = data["input_file"]
-        self.output_file = data["output_file"]
-        self.start_length = data["start_length"]
-        self.length_step = data["length_step"]
-        self.min_length = data["min_length"]
-        self.id = 0
-        pass
-
 class ClientGenerator:
     def __init__(self, fake_args):
         self.args = fake_args
@@ -165,7 +158,8 @@ class ClientGenerator:
 
         # 2. Khởi tạo trạng thái cho vòng lặp
         all_generated_arrows = [] 
-        current_arrow_id = self.args.id
+        # current_arrow_id = self.args.id
+        current_arrow_id = 0
         current_length = self.args.start_length
         
         validator = Validator()
@@ -270,13 +264,21 @@ class ClientGenerator:
 if __name__ == "__main__":
 
 
-    args = FakeParser({
-        "input_file": "1_board_test/my_board.txt",
-        "output_file": "2_result_test/result.json",
-        "start_length": 16,
-        "length_step": 2,
-        "min_length": 4,
-    })
+    # args = FakeParser({
+    #     "input_file": "1_board_test/my_board.txt",
+    #     "output_file": "2_result_test/result.json",
+    #     "start_length": 16,
+    #     "length_step": 2,
+    #     "min_length": 4,
+    # })
+
+    args = Args()
+    args.input_file = "1_board_test/my_board.txt"
+    args.output_file = "2_result_test/result.json"
+    args.start_length = 16
+    args.length_step = 2
+    args.min_length = 4
+
     client_generator = ClientGenerator(args)
     client_generator.excute()
 

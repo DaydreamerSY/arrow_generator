@@ -1,0 +1,201 @@
+level_name,template_name,start_length,length_step,min_length,size_x,size_y,is_icon
+1,square.png,25,5,5,10,10,
+2,circle.png,25,5,5,10,10,
+3,square.png,25,5,5,10,10,
+4,circle.png,25,5,5,10,10,
+5,AIR BALLOON.png,25,5,5,20,20,*
+6,square.png,25,5,5,10,10,
+7,circle.png,25,5,5,15,15,
+8,square.png,25,5,5,10,10,
+9,circle.png,25,5,5,20,15,
+10,AIR BALLOON.png,25,5,5,25,25,*
+11,square.png,25,5,5,15,15,
+12,circle.png,25,5,5,20,15,
+13,square.png,25,5,5,15,15,
+14,circle.png,25,5,5,25,25,
+15,AIR BALLOON.png,25,5,5,30,30,*
+16,square.png,25,5,5,15,15,
+17,circle.png,15,5,5,15,20,
+18,square.png,10,1,5,15,15,
+19,circle.png,25,5,5,25,25,
+20,AIR BALLOON.png,25,5,5,30,30,*
+21,square.png,25,5,5,15,15,
+22,circle.png,15,5,5,15,20,
+23,square.png,10,1,5,15,15,
+24,circle.png,25,5,5,25,25,
+25,AIR BALLOON.png,20,2,5,30,30,*
+26,square.png,25,5,5,15,15,
+27,circle.png,15,5,5,15,20,
+28,square.png,10,1,5,15,15,
+29,circle.png,25,5,5,25,25,
+30,AIR BALLOON.png,25,5,5,30,30,*
+31,square.png,25,5,5,15,15,
+32,circle.png,15,5,5,15,20,
+33,square.png,10,1,5,15,15,
+34,circle.png,25,5,5,25,25,
+35,AIR BALLOON.png,20,2,5,30,30,*
+36,square.png,25,5,5,15,15,
+37,circle.png,15,5,5,15,20,
+38,square.png,10,1,5,15,15,
+39,circle.png,25,5,5,25,25,
+40,AIR BALLOON.png,25,5,5,30,30,*
+41,square.png,25,5,5,15,15,
+42,circle.png,15,5,5,15,20,
+43,square.png,10,1,5,15,15,
+44,circle.png,25,5,5,25,25,
+45,AIR BALLOON.png,20,2,5,30,30,*
+46,square.png,25,5,5,15,15,
+47,circle.png,15,5,5,15,20,
+48,square.png,10,1,5,15,15,
+49,circle.png,25,5,5,25,25,
+50,AIR BALLOON.png,25,5,5,30,30,*
+51,square.png,25,5,5,15,15,
+52,circle.png,15,5,5,15,20,
+53,square.png,10,1,5,15,15,
+54,circle.png,25,5,5,25,25,
+55,AIR BALLOON.png,20,2,5,30,30,*
+56,square.png,25,5,5,15,15,
+57,circle.png,15,5,5,15,20,
+58,square.png,10,1,5,15,15,
+59,circle.png,25,5,5,25,25,
+60,AIR BALLOON.png,25,5,5,30,30,*
+61,square.png,25,5,5,15,15,
+62,circle.png,15,5,5,15,20,
+63,square.png,10,1,5,15,15,
+64,circle.png,25,5,5,25,25,
+65,AIR BALLOON.png,20,2,5,30,30,*
+66,square.png,25,5,5,15,15,
+67,circle.png,15,5,5,15,20,
+68,square.png,10,1,5,15,15,
+69,circle.png,25,5,5,25,25,
+70,AIR BALLOON.png,25,5,5,30,30,*
+71,square.png,25,5,5,15,15,
+72,circle.png,15,5,5,15,20,
+73,square.png,10,1,5,15,15,
+74,circle.png,25,5,5,25,25,
+75,AIR BALLOON.png,20,2,5,30,30,*
+76,square.png,25,5,5,15,15,
+77,circle.png,15,5,5,15,20,
+78,square.png,10,1,5,15,15,
+79,circle.png,25,5,5,25,25,
+80,AIR BALLOON.png,25,5,5,30,30,*
+81,square.png,25,5,5,15,15,
+82,circle.png,15,5,5,15,20,
+83,square.png,10,1,5,15,15,
+84,circle.png,25,5,5,25,25,
+85,AIR BALLOON.png,20,2,5,30,30,*
+86,square.png,25,5,5,15,15,
+87,circle.png,15,5,5,15,20,
+88,square.png,10,1,5,15,15,
+89,circle.png,25,5,5,25,25,
+90,AIR BALLOON.png,25,5,5,30,30,*
+91,square.png,25,5,5,15,15,
+92,circle.png,15,5,5,15,20,
+93,square.png,10,1,5,15,15,
+94,circle.png,25,5,5,25,25,
+95,AIR BALLOON.png,20,2,5,30,30,*
+96,square.png,25,5,5,15,15,
+97,circle.png,15,5,5,15,20,
+98,square.png,10,1,5,15,15,
+99,circle.png,25,5,5,25,25,
+100,AIR BALLOON.png,25,5,5,30,30,*
+101,square.png,25,5,5,15,15,
+102,circle.png,15,5,5,15,20,
+103,square.png,10,1,5,15,15,
+104,circle.png,25,5,5,25,25,
+105,AIR BALLOON.png,20,2,5,30,30,*
+106,square.png,25,5,5,15,15,
+107,circle.png,15,5,5,15,20,
+108,square.png,10,1,5,15,15,
+109,circle.png,25,5,5,25,25,
+110,AIR BALLOON.png,25,5,5,30,30,*
+111,square.png,25,5,5,15,15,
+112,circle.png,15,5,5,15,20,
+113,square.png,10,1,5,15,15,
+114,circle.png,25,5,5,25,25,
+115,AIR BALLOON.png,20,2,5,30,30,*
+116,square.png,25,5,5,15,15,
+117,circle.png,15,5,5,15,20,
+118,square.png,10,1,5,15,15,
+119,circle.png,25,5,5,25,25,
+120,AIR BALLOON.png,25,5,5,30,30,*
+121,square.png,25,5,5,15,15,
+122,circle.png,15,5,5,15,20,
+123,square.png,10,1,5,15,15,
+124,circle.png,25,5,5,25,25,
+125,AIR BALLOON.png,20,2,5,30,30,*
+126,square.png,25,5,5,15,15,
+127,circle.png,15,5,5,15,20,
+128,square.png,10,1,5,15,15,
+129,circle.png,25,5,5,25,25,
+130,AIR BALLOON.png,25,5,5,30,30,*
+131,square.png,25,5,5,15,15,
+132,circle.png,15,5,5,15,20,
+133,square.png,10,1,5,15,15,
+134,circle.png,25,5,5,25,25,
+135,AIR BALLOON.png,20,2,5,30,30,*
+136,square.png,25,5,5,15,15,
+137,circle.png,15,5,5,15,20,
+138,square.png,10,1,5,15,15,
+139,circle.png,25,5,5,25,25,
+140,AIR BALLOON.png,25,5,5,30,30,*
+141,square.png,25,5,5,15,15,
+142,circle.png,15,5,5,15,20,
+143,square.png,10,1,5,15,15,
+144,circle.png,25,5,5,25,25,
+145,AIR BALLOON.png,20,2,5,30,30,*
+146,square.png,25,5,5,15,15,
+147,circle.png,15,5,5,15,20,
+148,square.png,10,1,5,15,15,
+149,circle.png,25,5,5,25,25,
+150,AIR BALLOON.png,25,5,5,30,30,*
+151,square.png,25,5,5,15,15,
+152,circle.png,15,5,5,15,20,
+153,square.png,10,1,5,15,15,
+154,circle.png,25,5,5,25,25,
+155,AIR BALLOON.png,20,2,5,30,30,*
+156,square.png,25,5,5,15,15,
+157,circle.png,15,5,5,15,20,
+158,square.png,10,1,5,15,15,
+159,circle.png,25,5,5,25,25,
+160,AIR BALLOON.png,25,5,5,30,30,*
+161,square.png,25,5,5,15,15,
+162,circle.png,15,5,5,15,20,
+163,square.png,10,1,5,15,15,
+164,circle.png,25,5,5,25,25,
+165,AIR BALLOON.png,20,2,5,30,30,*
+166,square.png,25,5,5,15,15,
+167,circle.png,15,5,5,15,20,
+168,square.png,10,1,5,15,15,
+169,circle.png,25,5,5,25,25,
+170,AIR BALLOON.png,25,5,5,30,30,*
+171,square.png,25,5,5,15,15,
+172,circle.png,15,5,5,15,20,
+173,square.png,10,1,5,15,15,
+174,circle.png,25,5,5,25,25,
+175,AIR BALLOON.png,20,2,5,30,30,*
+176,square.png,25,5,5,15,15,
+177,circle.png,15,5,5,15,20,
+178,square.png,10,1,5,15,15,
+179,circle.png,25,5,5,25,25,
+180,AIR BALLOON.png,25,5,5,30,30,*
+181,square.png,25,5,5,15,15,
+182,circle.png,15,5,5,15,20,
+183,square.png,10,1,5,15,15,
+184,circle.png,25,5,5,25,25,
+185,AIR BALLOON.png,20,2,5,30,30,*
+186,square.png,25,5,5,15,15,
+187,circle.png,15,5,5,15,20,
+188,square.png,10,1,5,15,15,
+189,circle.png,25,5,5,25,25,
+190,AIR BALLOON.png,25,5,5,30,30,*
+191,square.png,25,5,5,15,15,
+192,circle.png,15,5,5,15,20,
+193,square.png,10,1,5,15,15,
+194,circle.png,25,5,5,25,25,
+195,AIR BALLOON.png,20,2,5,30,30,*
+196,square.png,25,5,5,15,15,
+197,circle.png,15,5,5,15,20,
+198,square.png,10,1,5,15,15,
+199,circle.png,25,5,5,25,25,
+200,AIR BALLOON.png,25,5,5,30,30,*

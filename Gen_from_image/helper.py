@@ -1,0 +1,32 @@
+import pandas as pd
+from types import SimpleNamespace
+
+
+class Args(SimpleNamespace):
+    input_file: str
+    output_file: str
+    start_length: str
+    length_step: str
+    min_length: str
+    id: int = 0
+    item_path: str
+    item_name: str
+    level_set_path: str
+    size: set = (0, 0)
+
+    alter_item_name: str
+
+    csv_path: str
+    csv: pd.DataFrame
+
+    def load_csv(self):
+        # 1_0_original_icons: chứa template png -> scale lại theo size bỏ vào 1_1_icons 
+        # -> convert sang board test -> generate arrow -> render ra img
+        df = pd.read_csv(self.csv_path)
+        return df
+    
+    def clone(self, **overrides):
+        """Trả về bản sao của Args với các thuộc tính ghi đè"""
+        data = vars(self).copy()
+        data.update(overrides)
+        return Args(**data)

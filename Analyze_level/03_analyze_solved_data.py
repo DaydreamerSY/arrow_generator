@@ -71,6 +71,7 @@ def main():
             data = load_json(path)
             info = analyze_level(data, file)
             results.append(info)
+            results = sorted(results, key=lambda a: a["name"])
             print(f"✅ {info['name']}: {info['total_states']} states, {info['total_arrows']} arrows")
         except Exception as e:
             print(f"❌ Error analyzing {file}: {e}")

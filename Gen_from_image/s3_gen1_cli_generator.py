@@ -107,7 +107,6 @@ class ClientGenerator:
         except Exception as e:
             print(f"Lỗi khi lưu file JSON: {e}")
 
-
     def visualize_in_console(self, arrows, editable_area):
         """(Tùy chọn) In một bản đồ ASCII của kết quả ra console."""
         print("--- Bản đồ kết quả (ASCII) ---")
@@ -192,13 +191,29 @@ class ClientGenerator:
             mock_layer = MockLayer(0, mock_color, editable_area)
 
             # 3e. Chạy Generator
-            newly_found_arrows, new_id_counter, status_msg = generator.generate_hybrid_level(
+            # newly_found_arrows, new_id_counter, status_msg = generator.generate_hybrid_level(
+            #     validator=validator,
+            #     active_layer=mock_layer,
+            #     all_arrows_on_board=all_generated_arrows, 
+            #     start_arrow_id=current_arrow_id,          
+            #     num_to_gen=num_to_gen,
+            #     avg_length=current_length
+            # )
+
+            # 3e. Chạy Generator
+            newly_found_arrows, new_id_counter, status_msg = generator.generate_hybrid_level_advanced(
                 validator=validator,
                 active_layer=mock_layer,
                 all_arrows_on_board=all_generated_arrows, 
                 start_arrow_id=current_arrow_id,          
                 num_to_gen=num_to_gen,
-                avg_length=current_length
+                avg_length=current_length,
+                # Các tham số mới
+                turn_probability=0.5, 
+                straight_weight=2,
+                left_weight=2,
+                right_weight=0.5,
+                max_turns=8
             )
             
             print(f"Kết quả vòng lặp: {status_msg}")

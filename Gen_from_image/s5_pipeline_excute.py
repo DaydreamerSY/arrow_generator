@@ -105,12 +105,12 @@ def excute_sequence_files(args: Args):
 
 if __name__ == "__main__":
 
-    level_set_path = Path("level_set/level_set_3")
+    level_set_path = Path("level_set/level_set_1")
 
     args = Args()
     args.level_set_path = level_set_path
-    args.start_length = 8
-    args.length_step = 2
+    args.start_length = 25
+    args.length_step = 5
     args.min_length = 4
     args.size = (50, 50)
 
@@ -118,11 +118,11 @@ if __name__ == "__main__":
     # excute_folder(args)
 
     # convert 1 file icon theo tên "item_name" trong folder "level_set/level_set_#/1_0_original_icons/" thành level
-    # args.item_name = "HEART.png"
-    # args.size = (30, 30)
-    # excute_single_file(args)
+    args.item_name = "HEART.png"
+    args.size = (30, 30)
+    excute_single_file(args)
 
     # convert theo data.csv
-    args.csv_path = Path("level_set/level_set_3/[Data] levels - test dataframe.csv")
-    args.csv = args.load_csv()
-    excute_sequence_files(args)
+    # args.csv_path = Path("level_set/level_set_3/[Data] levels - test dataframe.csv")
+    # args.csv = args.load_csv()
+    # excute_sequence_files(args)

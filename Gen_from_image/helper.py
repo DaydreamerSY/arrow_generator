@@ -19,6 +19,13 @@ class Args(SimpleNamespace):
     csv_path: str
     csv: pd.DataFrame
 
+    # Advance generator param
+    turn_probability: float
+    straight_weight: float
+    left_weight: float
+    right_weight: float
+    max_turns: int
+
     def load_csv(self):
         # 1_0_original_icons: chứa template png -> scale lại theo size bỏ vào 1_1_icons 
         # -> convert sang board test -> generate arrow -> render ra img

@@ -23,7 +23,7 @@ class MockLayer:
 
 # --- HÀM HELPER (Không thay đổi) ---
 class ClientGenerator:
-    def __init__(self, fake_args):
+    def __init__(self, fake_args: Args):
         self.args = fake_args
         pass
 
@@ -199,7 +199,7 @@ class ClientGenerator:
             #     num_to_gen=num_to_gen,
             #     avg_length=current_length
             # )
-
+            
             # 3e. Chạy Generator
             newly_found_arrows, new_id_counter, status_msg = generator.generate_hybrid_level_advanced(
                 validator=validator,
@@ -209,11 +209,11 @@ class ClientGenerator:
                 num_to_gen=num_to_gen,
                 avg_length=current_length,
                 # Các tham số mới
-                turn_probability=0.5, 
-                straight_weight=2,
-                left_weight=2,
-                right_weight=0.5,
-                max_turns=8
+                turn_probability=self.args.turn_probability, 
+                straight_weight=self.args.straight_weight,
+                left_weight=self.args.left_weight,
+                right_weight=self.args.right_weight,
+                max_turns=self.args.max_turns
             )
             
             print(f"Kết quả vòng lặp: {status_msg}")

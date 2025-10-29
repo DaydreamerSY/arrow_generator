@@ -99,13 +99,23 @@ class Renderer:
 
 if __name__ == "__main__":
 
-    
-    # Tên file JSON đã tạo bởi cli_generator.py
-    INPUT_JSON = "2_result_test/result.json" 
+    _filename = [
+        "HEART_tp=0.0_sw0.0_lw0.0_rw0.0_mt0.0.json",
+        "HEART_tp=0.0_sw0.0_lw0.0_rw0.0_mt0.3333333333333333.json",
+        "HEART_tp=0.0_sw0.0_lw0.0_rw0.0_mt0.6666666666666666.json",
+        "HEART_tp=0.0_sw0.0_lw0.0_rw0.0_mt1.0.json",
+        "HEART_tp=0.0_sw0.0_lw0.0_rw0.3333333333333333_mt0.0.json",
+        "HEART_tp=0.0_sw0.0_lw0.0_rw0.6666666666666666.0.json",
+    ]
 
-    # Tên file ảnh PNG sẽ được xuất ra
-    OUTPUT_IMAGE = "3_render/render_result.png"
+    for file_name in _filename:
 
-    # Truyền dữ liệu vào hàm vẽ
-    renderer = Renderer()
-    renderer.draw_generated_level(INPUT_JSON, OUTPUT_IMAGE)
+        # Tên file JSON đã tạo bởi cli_generator.py
+        INPUT_JSON = f"level_set/level_set_4 test combine param/2_result_test/{file_name}" 
+
+        # Tên file ảnh PNG sẽ được xuất ra
+        OUTPUT_IMAGE = f"level_set/level_set_4 test combine param/3_render/{file_name.replace('json', 'png')}"
+
+        # Truyền dữ liệu vào hàm vẽ
+        renderer = Renderer()
+        renderer.draw_generated_level(INPUT_JSON, OUTPUT_IMAGE)

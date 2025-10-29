@@ -6,7 +6,7 @@ CACHE_FOLDER = "_solved_data"
 MAX_WORKERS = 12
 
 def main():
-    import os
+    import os   
     os.makedirs(CACHE_FOLDER, exist_ok=True)
     files = [os.path.join(LEVEL_FOLDER, f) for f in os.listdir(LEVEL_FOLDER) if f.endswith(".json")]
     print(f"Analyzing {len(files)} levels with {MAX_WORKERS} workers...")

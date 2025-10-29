@@ -126,7 +126,7 @@ class HybridLevelGeneratorTestable:
         # === MODIFICATION START: Sử dụng Avg. Length từ UI ===
         # (Sử dụng avg_length được truyền vào)
         min_len = max(2, int(avg_length * 0.5)) 
-        max_len = int(avg_length * 1.5)
+        max_len = int(avg_length * 1.225)
         max_walk_len = max_len 
         # === MODIFICATION END ===
 
@@ -366,7 +366,7 @@ class HybridLevelGeneratorTestable:
         default_color = active_layer.color
         
         min_len = max(2, int(avg_length * 0.5)) 
-        max_len = int(avg_length * 1.5)
+        max_len = int(avg_length * 1.25)
         max_walk_len = max_len 
 
         for i in range(num_to_gen):

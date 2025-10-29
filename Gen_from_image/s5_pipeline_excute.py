@@ -102,19 +102,19 @@ def excute_sequence_files(args: Args):
         item_path = os.path.join(icons_folder_path, _args.alter_item_name)
         args.item_path = item_path
         excute_file(_args)
-
-
     pass
-
 
 
 if __name__ == "__main__":
 
-    level_set_path = Path("level_set/level_set_4 test combine param")
+    # level_set_path = Path("level_set/level_set_1")
+    # level_set_path = Path("level_set/level_set_2")
+    level_set_path = Path("level_set/level_set_3")
+    # level_set_path = Path("level_set/level_set_4 test combine param")
 
     args = Args()
     args.level_set_path = level_set_path
-    args.start_length = 20
+    args.start_length = 15
     args.length_step = 5
     args.min_length = 5
     args.size = (50, 50)
@@ -130,42 +130,42 @@ if __name__ == "__main__":
     # excute_folder(args)
 
     # convert 1 file icon theo tên "item_name" trong folder "level_set/level_set_#/1_0_original_icons/" thành level
-    # args.item_name = "HEART.png"
-    # args.size = (50, 50)
+    # args.item_name = "square.png"
+    # args.size = (42, 42)
     # excute_single_file(args)
 
     
 
     # convert theo data.csv
-    # args.csv_path = Path("level_set/level_set_3/[Data] levels - test dataframe.csv")
-    # args.csv = args.load_csv()
-    # excute_sequence_files(args)
+    args.csv_path = Path("level_set/level_set_3/[Data] levels - test dataframe.csv")
+    args.csv = args.load_csv()
+    excute_sequence_files(args)
 
     # test combination param để xem cái nào phù hợp nhất
-    args.item_name = "HEART.png"
-    args.size = (25, 25)
+    # args.item_name = "HEART.png"
+    # args.size = (25, 25)
 
-    turn_probability_values = np.linspace(0.25, 1.0, 4) # 0 to 1, step_num=4 -> step=0.25
-    straight_weight_values = np.linspace(0.25, 1.0, 4)
-    left_weight_values = np.linspace(0.25, 1.0, 4)
-    right_weight_values = np.linspace(0.25, 1.0, 4)
-    max_turns_values = np.linspace(2, 10, 5)
-    combinations = list(product(
-        turn_probability_values, 
-        straight_weight_values, 
-        left_weight_values, 
-        right_weight_values,
-        max_turns_values
-    ))
+    # turn_probability_values = np.linspace(0.25, 1.0, 4) # 0 to 1, step_num=4 -> step=0.25
+    # straight_weight_values = np.linspace(0.25, 1.0, 4)
+    # left_weight_values = np.linspace(0.25, 1.0, 4)
+    # right_weight_values = np.linspace(0.25, 1.0, 4)
+    # max_turns_values = np.linspace(2, 10, 5)
+    # combinations = list(product(
+    #     turn_probability_values, 
+    #     straight_weight_values, 
+    #     left_weight_values, 
+    #     right_weight_values,
+    #     max_turns_values
+    # ))
 
-    for (a, b, c, d, e) in combinations:
-        args.turn_probability=a
-        args.straight_weight=b
-        args.left_weight=c
-        args.right_weight=d
-        args.max_turns=e
+    # for (a, b, c, d, e) in combinations:
+    #     args.turn_probability=a
+    #     args.straight_weight=b
+    #     args.left_weight=c
+    #     args.right_weight=d
+    #     args.max_turns=e
 
-        args.alter_item_name = f"{args.item_name}_tp={a}_sw={b}_lw={c}_rw={d}_mt={e}"
+    #     args.alter_item_name = f"{args.item_name}_tp={a}_sw={b}_lw={c}_rw={d}_mt={e}"
 
-        excute_single_file(args)
+    #     excute_single_file(args)
 

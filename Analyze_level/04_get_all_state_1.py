@@ -23,5 +23,6 @@ def collect_state_images(parent_folder, state_name="state_01.png"):
 
 if __name__ == "__main__":
     # --- Example usage ---
-    parent_folder_path = Path("/Users/locnq/Documents/[Proto] Arrowscape/Level editor tool - experimental/debug_results")
+    # parent_folder_path = Path("/Users/locnq/Documents/[Proto] Arrowscape/Level editor tool - experimental/debug_results")
+    parent_folder_path = Path("_debug_results")
     collect_state_images(parent_folder_path)

@@ -97,7 +97,7 @@ class HybridLevelGeneratorTestable:
         if not editable_area:
             return [], start_arrow_id, "Active layer has no painted area to generate in."
 
-        max_retries_per_arrow = 100
+        max_retries_per_arrow = 1000
         
         # 3. Tính toán ranh giới và độ lệch (offset) CỦA editable_area
         min_x = min(p[0] for p in editable_area); min_y = min(p[1] for p in editable_area)
@@ -126,7 +126,7 @@ class HybridLevelGeneratorTestable:
         # === MODIFICATION START: Sử dụng Avg. Length từ UI ===
         # (Sử dụng avg_length được truyền vào)
         min_len = max(2, int(avg_length * 0.5)) 
-        max_len = int(avg_length * 1.225)
+        max_len = int(avg_length * 1.0)
         max_walk_len = max_len 
         # === MODIFICATION END ===
 
@@ -338,7 +338,7 @@ class HybridLevelGeneratorTestable:
         if not editable_area:
             return [], start_arrow_id, "Active layer has no painted area to generate in."
 
-        max_retries_per_arrow = 100
+        max_retries_per_arrow = 1000
         
         # 3. Tính toán ranh giới và độ lệch (offset) CỦA editable_area
         min_x = min(p[0] for p in editable_area); min_y = min(p[1] for p in editable_area)
@@ -366,7 +366,7 @@ class HybridLevelGeneratorTestable:
         default_color = active_layer.color
         
         min_len = max(2, int(avg_length * 0.5)) 
-        max_len = int(avg_length * 1.25)
+        max_len = int(avg_length * 1.0)
         max_walk_len = max_len 
 
         for i in range(num_to_gen):

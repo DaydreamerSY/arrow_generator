@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basic Shapes with Download</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .shape-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .shape-name {
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #333;
+        }
+        .canvas-container {
+            width: 250px;
+            height: 250px;
+            border: 1px solid #ccc; /* Để dễ nhìn ranh giới */
+            margin-bottom: 15px;
+            background-image: linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc),
+                              linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+        }
+        canvas {
+            display: block;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Basic Shapes</h1>
+
+    <div class="shape-container">
+        <div class="shape-name">Square</div>
+        <div class="canvas-container">
+            <canvas id="squareCanvas" width="250" height="250"></canvas>
+        </div>
+        <button onclick="downloadShape('squareCanvas', 'square.png')">Download Square PNG</button>
+    </div>
+
+    <div class="shape-container">
+        <div class="shape-name">Circle</div>
+        <div class="canvas-container">
+            <canvas id="circleCanvas" width="250" height="250"></canvas>
+        </div>
+        <button onclick="downloadShape('circleCanvas', 'circle.png')">Download Circle PNG</button>
+    </div>
+
+    <div class="shape-container">
+        <div class="shape-name">Triangle</div>
+        <div class="canvas-container">
+            <canvas id="triangleCanvas" width="250" height="250"></canvas>
+        </div>
+        <button onclick="downloadShape('triangleCanvas', 'triangle.png')">Download Triangle PNG</button>
+    </div>
+
+    <div class="shape-container">
+        <div class="shape-name">Rectangle (Horizontal)</div>
+        <div class="canvas-container">
+            <canvas id="rectangleHCanvas" width="250" height="250"></canvas>
+        </div>
+        <button onclick="downloadShape('rectangleHCanvas', 'rectangle_horizontal.png')">Download Rectangle H PNG</button>
+    </div>
+
+    <div class="shape-container">
+        <div class="shape-name">Star</div>
+        <div class="canvas-container">
+            <canvas id="starCanvas" width="250" height="250"></canvas>
+        </div>
+        <button onclick="downloadShape('starCanvas', 'star.png')">Download Star PNG</button>
+    </div>
+
+    <div class="shape-container">
+        <div class="shape-name">Oval</div>
+        <div class="canvas-container">
+            <canvas id="ovalCanvas" width="250" height="250"></canvas>
+        </div>
+        <button onclick="downloadShape('ovalCanvas', 'oval.png')">Download Oval PNG</button>
+    </div>
+
+    <div class="shape-container">
+        <div class="shape-name">Hexagon</div>
+        <div class="canvas-container">
+            <canvas id="hexagonCanvas" width="250" height="250"></canvas>
+        </div>
+        <button onclick="downloadShape('hexagonCanvas', 'hexagon.png')">Download Hexagon PNG</button>
+    </div>
+
+    <div class="shape-container">
+        <div class="shape-name">Rhombus (Diamond)</div>
+        <div class="canvas-container">
+            <canvas id="rhombusCanvas" width="250" height="250"></canvas>
+        </div>
+        <button onclick="downloadShape('rhombusCanvas', 'rhombus.png')">Download Rhombus PNG</button>
+    </div>
+
+    <div class="shape-container">
+        <div class="shape-name">Pentagon</div>
+        <div class="canvas-container">
+            <canvas id="pentagonCanvas" width="250" height="250"></canvas>
+        </div>
+        <button onclick="downloadShape('pentagonCanvas', 'pentagon.png')">Download Pentagon PNG</button>
+    </div>
+
+    <div class="shape-container">
+        <div class="shape-name">Heart</div>
+        <div class="canvas-container">
+            <canvas id="heartCanvas" width="250" height="250"></canvas>
+        </div>
+        <button onclick="downloadShape('heartCanvas', 'heart.png')">Download Heart PNG</button>
+    </div>
+
+    <script>
+        // Màu sắc cơ bản cho các hình
+        const fillColor = '#6a5acd'; // Màu tím xanh
+
+        function drawShapes() {
+            // Square
+            const squareCanvas = document.getElementById('squareCanvas');
+            const sqCtx = squareCanvas.getContext('2d');
+            sqCtx.fillStyle = fillColor;
+            sqCtx.fillRect(0, 0, 250, 250);
+
+            // Circle
+            const circleCanvas = document.getElementById('circleCanvas');
+            const circCtx = circleCanvas.getContext('2d');
+            circCtx.fillStyle = fillColor;
+            circCtx.beginPath();
+            circCtx.arc(125, 125, 125, 0, Math.PI * 2);
+            circCtx.fill();
+
+            // Triangle (equilateral)
+            const triangleCanvas = document.getElementById('triangleCanvas');
+            const triCtx = triangleCanvas.getContext('2d');
+            triCtx.fillStyle = fillColor;
+            triCtx.beginPath();
+            triCtx.moveTo(125, 0); // Top
+            triCtx.lineTo(0, 250); // Bottom-left
+            triCtx.lineTo(250, 250); // Bottom-right
+            triCtx.closePath();
+            triCtx.fill();
+
+            // Rectangle (Horizontal, filling 250x250 container)
+            const rectangleHCanvas = document.getElementById('rectangleHCanvas');
+            const rectHCtx = rectangleHCanvas.getContext('2d');
+            rectHCtx.fillStyle = fillColor;
+            rectHCtx.fillRect(0, 75, 250, 100); // Ví dụ: rộng 250, cao 100, ở giữa theo chiều dọc (250-100)/2 = 75
+
+            // Star (5-pointed)
+            const starCanvas = document.getElementById('starCanvas');
+            const starCtx = starCanvas.getContext('2d');
+            starCtx.fillStyle = fillColor;
+            drawStar(starCtx, 125, 125, 5, 120, 60); // centerX, centerY, points, outerRadius, innerRadius
+
+            // Oval
+            const ovalCanvas = document.getElementById('ovalCanvas');
+            const ovalCtx = ovalCanvas.getContext('2d');
+            ovalCtx.fillStyle = fillColor;
+            ovalCtx.beginPath();
+            ovalCtx.ellipse(125, 125, 120, 80, 0, 0, Math.PI * 2); // centerX, centerY, radiusX, radiusY
+            ovalCtx.fill();
+
+            // Hexagon
+            const hexagonCanvas = document.getElementById('hexagonCanvas');
+            const hexCtx = hexagonCanvas.getContext('2d');
+            hexCtx.fillStyle = fillColor;
+            // Bắt đầu vẽ từ 0 độ (cạnh phải) sẽ cho ta hình lục giác có cạnh trên/dưới nằm ngang
+            drawPolygon(hexCtx, 125, 125, 6, 125, 0);
+
+            // Rhombus (Diamond)
+            const rhombusCanvas = document.getElementById('rhombusCanvas');
+            const rhomCtx = rhombusCanvas.getContext('2d');
+            rhomCtx.fillStyle = fillColor;
+            rhomCtx.beginPath();
+            rhomCtx.moveTo(125, 0);
+            rhomCtx.lineTo(250, 125);
+            rhomCtx.lineTo(125, 250);
+            rhomCtx.lineTo(0, 125);
+            rhomCtx.closePath();
+            rhomCtx.fill();
+
+            // --- PHẦN PENTAGON ĐƯỢC CẬP NHẬT ---
+            const pentagonCanvas = document.getElementById('pentagonCanvas');
+            const penCtx = pentagonCanvas.getContext('2d');
+            penCtx.fillStyle = fillColor;
+            
+            // Góc xoay để ngũ giác có 1 đỉnh ở trên cùng (-90 độ)
+            const penStartAngle = -Math.PI / 2;
+            
+            // Tính bán kính (R) sao cho chiều rộng (W) vừa khít 250px
+            // W = 2 * R * cos(18 độ)
+            const penRadius = 250 / (2 * Math.cos(18 * Math.PI / 180));
+            
+            // Tính tâm Y (cY) sao cho cạnh đáy (y_bottom) ở y=250
+            // y_bottom = cY + R * sin(54 độ)
+            const penCenterY = 250 - (penRadius * Math.sin(54 * Math.PI / 180));
+            
+            // Vẽ ngũ giác với các thông số đã tính
+            drawPolygon(penCtx, 125, penCenterY, 5, penRadius, penStartAngle);
+            // --- KẾT THÚC CẬP NHẬT PENTAGON ---
+
+            // Heart
+            const heartCanvas = document.getElementById('heartCanvas');
+            const heartCtx = heartCanvas.getContext('2d');
+            heartCtx.fillStyle = fillColor;
+            drawHeart(heartCtx, 125, 100, 100); // centerX, centerY, size
+        }
+
+        // Helper function for drawing a star
+        function drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+            let rot = Math.PI / 2 * 3;
+            let x = cx;
+            let y = cy;
+            let step = Math.PI / spikes;
+
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - outerRadius);
+            for (let i = 0; i < spikes; i++) {
+                x = cx + Math.cos(rot) * outerRadius;
+                y = cy + Math.sin(rot) * outerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+
+                x = cx + Math.cos(rot) * innerRadius;
+                y = cy + Math.sin(rot) * innerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // --- HÀM HELPER ĐƯỢC CẬP NHẬT ---
+        // Thêm tham số 'startAngle' để xoay hình
+        function drawPolygon(ctx, cx, cy, sides, radius, startAngle) {
+            startAngle = startAngle || 0; // Mặc định là 0 độ (hướng 3 giờ)
+
+            ctx.beginPath();
+            // Điểm bắt đầu
+            ctx.moveTo(cx + radius * Math.cos(startAngle), cy + radius * Math.sin(startAngle));
+            
+            // Vẽ các cạnh còn lại
+            for (let i = 1; i <= sides; i++) {
+                const angle = startAngle + (i * 2 * Math.PI / sides);
+                ctx.lineTo(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
+            }
+            ctx.fill();
+        }
+
+        // Helper function for drawing a heart
+        function drawHeart(ctx, x, y, size) {
+            ctx.beginPath();
+            ctx.moveTo(x, y + size / 4);
+            ctx.bezierCurveTo(x + size / 2, y - size / 2, x + size, y, x, y + size);
+            ctx.bezierCurveTo(x - size, y, x - size / 2, y - size / 2, x, y + size / 4);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+
+        function downloadShape(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Draw all shapes when the page loads
+        window.onload = drawShapes;
+    </script>
+</body>
+</html>

@@ -33,10 +33,10 @@ class Renderer:
         print(f"--- Đang render: {name} ({XSize}x{YSize}) ---")
 
         # --- Setup Matplotlib (Giữ nguyên từ file mẫu) ---
-        plt.figure(figsize=(XSize / 2.5, YSize / 2.5))
+        plt.figure(figsize=(XSize / 5, YSize / 5))
         ax = plt.gca()
-        ax.set_xlim(-0.5, XSize - 0.5)
-        ax.set_ylim(-0.5, YSize - 0.5)
+        ax.set_xlim(-0.5, XSize - 0.9)
+        ax.set_ylim(-0.5, YSize - 0.9)
         ax.set_aspect("equal")
         ax.invert_yaxis() # Trục Y đi xuống
         plt.axis("off")
@@ -58,7 +58,7 @@ class Renderer:
                 continue
                 
             xs, ys = zip(*pts)
-            ax.plot(xs, ys, color=colors[i], linewidth=3)
+            ax.plot(xs, ys, color=colors[i], linewidth=1)
 
             # Vẽ đầu mũi tên (Giữ nguyên từ file mẫu)
             # File JSON của chúng ta lưu tọa độ ĐẦU MŨI TÊN (đã offset)

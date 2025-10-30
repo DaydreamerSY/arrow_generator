@@ -190,31 +190,36 @@ class ClientGenerator:
             # 3d. Tạo MockLayer
             mock_layer = MockLayer(0, mock_color, editable_area)
 
-            # 3e. Chạy Generator
-            newly_found_arrows, new_id_counter, status_msg = generator.generate_hybrid_level(
-                validator=validator,
-                active_layer=mock_layer,
-                all_arrows_on_board=all_generated_arrows, 
-                start_arrow_id=current_arrow_id,          
-                num_to_gen=num_to_gen,
-                avg_length=current_length
-            )
+            newly_found_arrows, new_id_counter, status_msg = "", "", ""
+
+            if self.args.generate_mode == "basic":
+
+                # 3e. Chạy Generator
+                newly_found_arrows, new_id_counter, status_msg = generator.generate_hybrid_level(
+                    validator=validator,
+                    active_layer=mock_layer,
+                    all_arrows_on_board=all_generated_arrows, 
+                    start_arrow_id=current_arrow_id,          
+                    num_to_gen=num_to_gen,
+                    avg_length=current_length
+                )
             
-            # 3e. Chạy Generator
-            # newly_found_arrows, new_id_counter, status_msg = generator.generate_hybrid_level_advanced(
-            #     validator=validator,
-            #     active_layer=mock_layer,
-            #     all_arrows_on_board=all_generated_arrows, 
-            #     start_arrow_id=current_arrow_id,          
-            #     num_to_gen=num_to_gen,
-            #     avg_length=current_length,
-            #     # Các tham số mới
-            #     turn_probability=self.args.turn_probability, 
-            #     straight_weight=self.args.straight_weight,
-            #     left_weight=self.args.left_weight,
-            #     right_weight=self.args.right_weight,
-            #     max_turns=self.args.max_turns
-            # )
+            elif self.args.generate_mode == "advance":
+                # 3e. Chạy Generator Advance
+                newly_found_arrows, new_id_counter, status_msg = generator.generate_hybrid_level_advanced(
+                    validator=validator,
+                    active_layer=mock_layer,
+                    all_arrows_on_board=all_generated_arrows, 
+                    start_arrow_id=current_arrow_id,          
+                    num_to_gen=num_to_gen,
+                    avg_length=current_length,
+                    # Các tham số mới
+                    turn_probability=self.args.turn_probability, 
+                    straight_weight=self.args.straight_weight,
+                    left_weight=self.args.left_weight,
+                    right_weight=self.args.right_weight,
+                    max_turns=self.args.max_turns
+                )
             
             print(f"Kết quả vòng lặp: {status_msg}")
 

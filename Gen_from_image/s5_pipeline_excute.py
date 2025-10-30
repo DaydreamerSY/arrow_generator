@@ -11,6 +11,33 @@ import os
 import pandas as pd
 import numpy as np
 
+import sys
+import datetime
+
+# === GHI LOG RA FILE ===
+timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+log_file = open(Path(f"logs/debug_{timestamp}.log"), "w", encoding="utf-8")
+
+# Ghi đồng thời cả ra terminal và file
+class Logger(object):
+    def __init__(self, file):
+        self.terminal = sys.stdout
+        self.log = file
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+
+    def flush(self):  # để tránh lỗi buffer
+        self.terminal.flush()
+        self.log.flush()
+
+# Gán lại stdout
+sys.stdout = Logger(log_file)
+sys.stderr = Logger(log_file)
+
+print(f"[LOGGING] Bắt đầu ghi log vào {log_file.name}\n")
+
 
 
 def excute_file(args: Args):
@@ -80,11 +107,15 @@ def excute_single_file(args: Args):
 
 
 def excute_sequence_files(args: Args):
-    print(args.csv)
+
+
+    # print(args.csv)
     for row in args.csv.itertuples():
-        print(row.Index, row.template_name, row.size_x)
+        # print(row.Index, row.template_name, row.size_x)
 
         _args = args.clone()
+
+        _args.generate_mode = "basic"
 
         icons_folder_path = Path(f"{_args.level_set_path}/1_0_original_icons")
 
@@ -98,6 +129,16 @@ def excute_sequence_files(args: Args):
         _args.min_length = row.min_length
         _args.size = (row.size_x, row.size_y)
 
+        if row.style == "AZ":
+            _args.generate_mode = "advance"
+
+            args.turn_probability=0.5
+            args.straight_weight=0.75
+            args.left_weight=0.25
+            args.right_weight=0.5
+            args.max_turns=6
+
+
         icons_folder_path = Path(f"{_args.level_set_path}/1_0_original_icons")
         item_path = os.path.join(icons_folder_path, _args.alter_item_name)
         args.item_path = item_path
@@ -107,13 +148,9 @@ def excute_sequence_files(args: Args):
 
 if __name__ == "__main__":
 
-    # level_set_path = Path("level_set/level_set_1")
-    # level_set_path = Path("level_set/level_set_2")
-    level_set_path = Path("level_set/level_set_3")
-    # level_set_path = Path("level_set/level_set_4 test combine param")
 
     args = Args()
-    args.level_set_path = level_set_path
+    args.level_set_path = ""
     args.start_length = 15
     args.length_step = 5
     args.min_length = 5
@@ -126,22 +163,30 @@ if __name__ == "__main__":
     args.right_weight=0.5
     args.max_turns=30
 
-    # convert toàn bộ file image trong toàn bộ folder "level_set/level_set_#/1_0_original_icons/" thành level
-    # excute_folder(args)
+    args.generate_mode = "basic" # basic, advance
 
     # convert 1 file icon theo tên "item_name" trong folder "level_set/level_set_#/1_0_original_icons/" thành level
+    # args.level_set_path = Path("level_set/level_set_1")
     # args.item_name = "square.png"
     # args.size = (42, 42)
     # excute_single_file(args)
 
-    
+    # convert toàn bộ file image trong toàn bộ folder "level_set/level_set_#/1_0_original_icons/" thành level
+    # args.level_set_path = Path("level_set/level_set_2")
+    # excute_folder(args)
+
 
     # convert theo data.csv
+    args.level_set_path = Path("level_set/level_set_3")
     args.csv_path = Path("level_set/level_set_3/[Data] levels - test dataframe.csv")
     args.csv = args.load_csv()
     excute_sequence_files(args)
 
+
+
+
     # test combination param để xem cái nào phù hợp nhất
+    # args.level_set_path = Path("level_set/level_set_4 test combine param")
     # args.item_name = "HEART.png"
     # args.size = (25, 25)
 
@@ -164,8 +209,6 @@ if __name__ == "__main__":
     #     args.left_weight=c
     #     args.right_weight=d
     #     args.max_turns=e
-
     #     args.alter_item_name = f"{args.item_name}_tp={a}_sw={b}_lw={c}_rw={d}_mt={e}"
-
     #     excute_single_file(args)
 

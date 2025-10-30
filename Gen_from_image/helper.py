@@ -19,6 +19,8 @@ class Args(SimpleNamespace):
     csv_path: str
     csv: pd.DataFrame
 
+    generate_mode: str
+
     # Advance generator param
     turn_probability: float
     straight_weight: float
@@ -37,3 +39,24 @@ class Args(SimpleNamespace):
         data = vars(self).copy()
         data.update(overrides)
         return Args(**data)
+
+
+
+
+import random
+
+if __name__ == "__main__":
+
+    name_list = [
+        "square.png",
+        "circle.png",
+        "hexagon.png",
+        "pentagon.png",
+        "star.png",
+    ]
+
+    _name_list_loop = name_list * 4
+    random.shuffle(_name_list_loop)
+    for i in _name_list_loop:
+        print(i)
+

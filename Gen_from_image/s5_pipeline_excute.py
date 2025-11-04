@@ -166,10 +166,10 @@ if __name__ == "__main__":
     args.generate_mode = "basic" # basic, advance
 
     # convert 1 file icon theo tên "item_name" trong folder "level_set/level_set_#/1_0_original_icons/" thành level
-    # args.level_set_path = Path("level_set/level_set_1")
-    # args.item_name = "square.png"
-    # args.size = (42, 42)
-    # excute_single_file(args)
+    args.level_set_path = Path("level_set/level_set_1")
+    args.item_name = "Daily_328.png"
+    args.size = (30, 30)
+    excute_single_file(args)
 
     # convert toàn bộ file image trong toàn bộ folder "level_set/level_set_#/1_0_original_icons/" thành level
     # args.level_set_path = Path("level_set/level_set_2")
@@ -177,10 +177,10 @@ if __name__ == "__main__":
 
 
     # convert theo data.csv
-    args.level_set_path = Path("level_set/level_set_3")
-    args.csv_path = Path("level_set/level_set_3/[Data] levels - test dataframe.csv")
-    args.csv = args.load_csv()
-    excute_sequence_files(args)
+    # args.level_set_path = Path("level_set/level_set_3")
+    # args.csv_path = Path("level_set/level_set_3/[Data] levels - test dataframe.csv")
+    # args.csv = args.load_csv()
+    # excute_sequence_files(args)
 
 
 

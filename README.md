@@ -1,4 +1,14 @@
-Arrow Generator Project1. DescriptionThis project provides a suite of tools for generating, editing, and analyzing "arrow" game levels.The project has three main workflows:Generation (Gen_from_image/): An automated pipeline that converts an image (e.g., circle.png) into a "board" (text format), generates a .json level file containing arrows that fill the board, and renders that level into a .png image.Editor (Editor_tool/): A visual, GUI-based level editor (using PySide6) to manually create, edit, playtest, and auto-generate arrows within a user-painted area.Analysis (Analyze_level/): A separate toolset that takes existing .json level files, runs a solver algorithm, exports statistics (CSV), and renders the solution steps into images.2. Project Structurev2.2/
+# Arrow Generator Project
+## 1. Description
+This project provides a suite of tools for generating, editing, and analyzing "arrow" game levels. The project has three main workflows:
+- Generation (Gen_from_image/): An automated pipeline that converts an image (e.g., circle.png) into a "board" (text format), generates a .json level file containing arrows that fill the board, and renders that level into a .png image.
+- Editor (Editor_tool/): A visual, GUI-based level editor (using PySide6) to manually create, edit, playtest, and auto-generate arrows within a user-painted area.
+- Analysis (Analyze_level/): A separate toolset that takes existing .json level files, runs a solver algorithm, exports statistics (CSV), and renders the solution steps into images.
+
+
+## 2. Project Structure
+```
+v2.2/
 ├── Gen_from_image/           # WORKFLOW 1: GENERATE LEVEL FROM IMAGE
 │   ├── s1_img1_rescale_image.py    # Step 1: Resize original image
 │   ├── s2_img2_image_to_board.py   # Step 2: Convert resized image to .txt board
@@ -20,10 +30,103 @@ Arrow Generator Project1. DescriptionThis project provides a suite of tools for 
 │
 ├── template_level/             # Contains template images (circle.png, square.png)
 └── ...
-3. InstallationThe project requires several Python libraries. You can install them using pip:pip install pandas matplotlib numpy pillow PySide6
-(Lưu ý: PySide6 là bắt buộc cho Workflow 3: Editor Tool).4. UsageThe project has three main workflows. You can perform any of them.Workflow 1: Generate Level from Image (Gen_from_image)This is the primary automated function. The entire pipeline is controlled by s5_pipeline_excute.py.Step 1: Prepare Directories and ImagesBased on the structure in s5_pipeline_excute.py, the project expects you to create a "set" directory (e.g., level_set/level_set_1/).Inside that directory, create a subdirectory 1_0_original_icons/.Place the (PNG) image files you want to convert into level_set/level_set_1/1_0_original_icons/ (e.g., HEART.png, square.png).Step 2: Configure the PipelineOpen the file Gen_from_image/s5_pipeline_excute.py.Find the if __name__ == "__main__": block at the end of the file.Customize the parameters in the args = Args() object:args.level_set_path: Path to your "set" directory (e.g., Path("level_set/level_set_1")).args.size: The (width, height) to which the original image will be resized (e.g., (50, 50)).args.start_length, args.length_step, args.min_length: Configure the arrow generation algorithm.args.generate_mode: Choose "basic" (simple random walk) or "advance" (controlled random walk).If using "advance", you can also customize: turn_probability, straight_weight, etc.Step 3: Choose Execution ModeIn the s5_pipeline_excute.py file, choose an execution mode by uncommenting the corresponding function (e.g., excute_folder(args)).Step 4: Run the PipelineAfter configuration, run the s5_pipeline_excute.py file:python Gen_from_image/s5_pipeline_excute.py
-Step 5: Check the ResultsThe pipeline will automatically create directories and files (e.g., in level_set/level_set_1/):Resized Images: 1_1_icons/Board (Text): 1_board_test/Level (JSON): 2_result_test/ (This is the actual level file).Image (Render): 3_render/ (Visual representation of the JSON file).Workflow 2: Visual Level Editor (Editor_tool)This tool provides a graphical (GUI) interface for creating and editing levels manually.How to RunTo run the editor, execute the auto_gen_tool_v1.6_manual.py script:python Editor_tool/auto_gen_tool_v1.6_manual.py
-Main FeaturesPaint Area (W): Manually "paint" the shape of your level using a brush, rectangle, or circle tool.Draw Arrow (E): Manually draw arrows with the mouse directly on the canvas.Generate Hybrid Level (G): Automatically fill the painted area with solvable arrows.Save (S) / Load (L): Save or load levels in the standard .json format (compatible with the other workflows).Playtest (P): Interactively play and solve the level you are editing directly within the tool.Workflow 3: Analyze Level (Analyze_level)This workflow is used to analyze .json files (either from Workflow 1 or 2).Step 1: Prepare LevelsCreate the directory Analyze_level/input_levels/.Copy all the .json level files you want to analyze into this directory.Step 2: Run the Level SolverRun the 01_solve_levels_parallel.py script. This will read the .json files, find solutions, and save results to _solved_data/.python Analyze_level/01_solve_levels_parallel.py
-Step 3: Render Solution Visuals (Optional)Run 02_render_visuals.py to create images for each step of the solution.python Analyze_level/02_render_visuals.py
-Results: Images will be saved in _debug_results/visuals/.Step 4: Analyze and Export CSVRun 03_analyze_solved_data.py to compile statistics from the solved data.python Analyze_level/03_analyze_solved_data.py
-Results: An out_put/analysis.csv file will be created with statistics (total arrows, steps, lengths, etc.).
+```
+
+## 3. Installation
+The project requires several Python libraries. You can install them using pip:
+
+```
+pip install pandas matplotlib numpy pillow PySide6
+```
+
+(Lưu ý: PySide6 là bắt buộc cho Workflow 3: Editor Tool).
+
+## 4. Usage
+The project has three main workflows. You can perform any of them.
+### Workflow 1: Generate Level from Image (Gen_from_image)
+This is the primary automated function. The entire pipeline is controlled by `s5_pipeline_excute.py.`
+1. Step 1: Prepare Directories and Images:
+
+    Based on the structure in `s5_pipeline_excute.py`, the project expects you to create a "set" directory (e.g., level_set/level_set_1/).
+
+    Inside that directory, create a subdirectory `1_0_original_icons/.`
+
+    Place the (PNG) image files you want to convert into `level_set/level_set_1/1_0_original_icons/` (e.g., HEART.png, square.png).
+
+1. Step 2: Configure the Pipeline:
+    Open the file `Gen_from_image/s5_pipeline_excute.py`.
+
+    Find the `if __name__ == "__main__":` block at the end of the file.
+
+    Customize the parameters in the args = Args() object:
+
+    - `args.level_set_path`: Path to your "set" directory (e.g., Path("level_set/level_set_1")).
+
+    - `args.size`: The (width, height) to which the original image will be resized (e.g., (50, 50)).
+
+    - `args.start_length`, args.length_step, args.min_length: Configure the arrow generation algorithm.
+
+    - `args.generate_mode`: Choose "basic" (simple random walk) or "advance" (controlled random walk).
+
+    If using "advance", you can also customize: turn_probability, straight_weight, etc.
+
+1. Step 3: Choose Execution Mode:
+In the s5_pipeline_excute.py file, choose an execution mode by uncommenting the corresponding function (e.g., excute_folder(args)).
+
+1. Step 4: Run the Pipeline:
+After configuration, run the s5_pipeline_excute.py file:
+python Gen_from_image/s5_pipeline_excute.py
+
+
+1. Step 5: Check the Results:
+The pipeline will automatically
+- create directories and files in `level_set/level_set_1/`:
+- Resized Images: `1_1_icons/`
+- Board (Text): `1_board_test/`
+- Level (JSON): `2_result_test/` (This is the actual level file).
+- Image (Render): `3_render/` (Visual representation of the JSON file).
+
+## Workflow 2: Visual Level Editor (Editor_tool)
+This tool provides a graphical (GUI) interface for creating and editing levels manually.
+
+### How to Run:
+
+To run the editor, execute the `auto_gen_tool_v1.6_manual.py` script:
+```
+python Editor_tool/auto_gen_tool_v1.6_manual.py
+```
+
+Main Features:
+
+- Paint Area (W): Manually "paint" the shape of your level using a brush, rectangle, or circle tool.
+- Draw Arrow (E): Manually draw arrows with the mouse directly on the canvas.
+- Generate Hybrid Level (G): Automatically fill the painted area with solvable arrows.
+- Save (S) / Load (L): Save or load levels in the standard .json format (compatible with the other workflows).
+- Playtest (P): Interactively play and solve the level you are editing directly within the tool.
+
+## Workflow 3: Analyze Level (Analyze_level)
+This workflow is used to analyze .json files (either from Workflow 1 or 2).
+1. Step 1: Prepare Levels
+Create the directory `Analyze_level/input_levels/.`
+Copy all the .json level files you want to analyze into this directory.
+1. Step 2: Run the Level Solver
+Run the `01_solve_levels_parallel.py` script. This will read the .json files, find solutions, and save results to `_solved_data/`.
+```
+python Analyze_level/01_solve_levels_parallel.py
+```
+
+1. Step 3: Render Solution Visuals (Optional)
+Run `02_render_visuals.py` to create images for each step of the solution.
+```
+python Analyze_level/02_render_visuals.py
+```
+
+Results: Images will be saved in `_debug_results/visuals/.`
+
+1. Step 4: Analyze and Export CSV
+Run `03_analyze_solved_data.py` to compile statistics from the solved data.
+```
+python Analyze_level/03_analyze_solved_data.py
+```
+
+Results: An `out_put/analysis.csv` file will be created with statistics (total arrows, steps, lengths, etc.).

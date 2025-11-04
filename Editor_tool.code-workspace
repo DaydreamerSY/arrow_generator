@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "Gen_from_image"
+		},
+		{
+			"path": "README"
 		}
 	],
 	"settings": {
@@ -35,10 +38,6 @@
 			{
 				"folderPath": "/Users/locnq/Documents/[Proto] Arrowscape/v2.2/Gen_from_image/level_set/level_set_1/",
 				"color": "foldercolorizer.color_0000ff"
-			},
-			{
-				"folderPath": "/Users/locnq/Documents/[Proto] Arrowscape/v2.2/Gen_from_image/level_set/level_set_2/",
-				"color": "foldercolorizer.color_00cc33"
 			},
 			{
 				"folderPath": "/Users/locnq/Documents/[Proto] Arrowscape/v2.2/Gen_from_image/level_set/level_set_3/",

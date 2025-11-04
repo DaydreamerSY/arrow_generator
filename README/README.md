@@ -136,4 +136,20 @@ python Analyze_level/03_analyze_solved_data.py
 Results: An `out_put/analysis.csv` file will be created with statistics (total arrows, steps, lengths, etc.).
 
 
-https://youtu.be/LYCt4FmL9XY
+Video tutorial: https://youtu.be/LYCt4FmL9XY
+
+## Workflow 4: Import Level to Unity
+This workflow is used to import created levels into Unity's project
+
+### Step 1: Rename files
+### ***Very Important***
+
+Because the lack of features and polish of these tools above, you have to rename all file into this format: `0001.json` to make sure all levels are right order
+
+### Step 2: Open Unity
+1. Open `Level Data Converter` by going to `Arrow Escape > Level Data Converter`
+2. You can choose convert single file or a folder
+3. Set the converted level's ID, in case convert a folder, set the start level's ID to the first level in folder
+4. Convert
+
+

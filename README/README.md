@@ -1,12 +1,13 @@
 # Arrow Generator Project
-## 1. Description
+
+## Description
 This project provides a suite of tools for generating, editing, and analyzing "arrow" game levels. The project has three main workflows:
 - Generation (Gen_from_image/): An automated pipeline that converts an image (e.g., circle.png) into a "board" (text format), generates a .json level file containing arrows that fill the board, and renders that level into a .png image.
 - Editor (Editor_tool/): A visual, GUI-based level editor (using PySide6) to manually create, edit, playtest, and auto-generate arrows within a user-painted area.
 - Analysis (Analyze_level/): A separate toolset that takes existing .json level files, runs a solver algorithm, exports statistics (CSV), and renders the solution steps into images.
 
 
-## 2. Project Structure
+## Project Structure
 ```
 v2.2/
 ├── Gen_from_image/           # WORKFLOW 1: GENERATE LEVEL FROM IMAGE
@@ -32,7 +33,7 @@ v2.2/
 └── ...
 ```
 
-## 3. Installation
+## Installation
 The project requires several Python libraries. You can install them using pip:
 
 ```
@@ -41,7 +42,7 @@ pip install pandas matplotlib numpy pillow PySide6
 
 (Lưu ý: PySide6 là bắt buộc cho Workflow 3: Editor Tool).
 
-## 4. Usage
+## Usage
 The project has three main workflows. You can perform any of them.
 ### Workflow 1: Generate Level from Image (Gen_from_image)
 This is the primary automated function. The entire pipeline is controlled by `s5_pipeline_excute.py.`
@@ -108,33 +109,17 @@ Main Features:
 ### **Advance generator (generator with style) NOT included in Visual Level Editor**
 
 ## Workflow 3: Analyze Level (Analyze_level)
-This workflow is used to analyze .json files (either from Workflow 1 or 2).
+This workflow is used to analyze `.json` files (either from Workflow 1 or 2).
 ### Step 1: Prepare Levels
 - Create the directory `Analyze_level/input_levels/.`
 - Copy all the .json level files you want to analyze into this directory.
 
-### Step 2: Run the Level Solver
-- Run the `01_solve_levels_parallel.py` script. This will read the .json files, find solutions, and save results to `_solved_data/`.
-```
-python Analyze_level/01_solve_levels_parallel.py
-```
-
-### Step 3: Render Solution Visuals **(Optional)**
-Run `02_render_visuals.py` to create images for each step of the solution.
-```
-python Analyze_level/02_render_visuals.py
-```
-
-Results: Images will be saved in `_debug_results/visuals/.`
-
-### Step 4: Analyze and Export CSV
-Run `03_analyze_solved_data.py` to compile statistics from the solved data.
-```
-python Analyze_level/03_analyze_solved_data.py
-```
+### Step 2: Run pipeline excute
+- Run the `s5_pipeline_excute.py` script. This will do everything, note that Render file to Image can be skip (optional), disable for faster analyze progress
 
 Results: An `out_put/analysis.csv` file will be created with statistics (total arrows, steps, lengths, etc.).
 
+Update 4 Nov: you can do everything in a single file `s5_pipeline_excute.py`
 
 Video tutorial: https://youtu.be/LYCt4FmL9XY
 
@@ -151,5 +136,6 @@ Because the lack of features and polish of these tools above, you have to rename
 2. You can choose convert single file or a folder
 3. Set the converted level's ID, in case convert a folder, set the start level's ID to the first level in folder
 4. Convert
+5. Done
 
 

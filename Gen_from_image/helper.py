@@ -1,5 +1,6 @@
 import pandas as pd
 from types import SimpleNamespace
+from pathlib import Path
 
 
 class Args(SimpleNamespace):
@@ -41,6 +42,29 @@ class Args(SimpleNamespace):
         return Args(**data)
 
 
+def rename_json_files(folder_path: str):
+    folder = Path(folder_path)
+    if not folder.is_dir():
+        print(f"Error: {folder} is not a valid directory.")
+        return
+
+    for file in folder.glob("*.json"):
+        try:
+            # Extract the number part (e.g. "1" from "1.json")
+            stem = file.stem
+            if not stem.isdigit():
+                print(f"Skipping non-numeric file: {file.name}")
+                continue
+
+            new_name = f"{int(stem):04d}.json"  # pad with zeros to 4 digits
+            new_path = file.with_name(new_name)
+
+            # Only rename if name changes
+            if file.name != new_name:
+                file.rename(new_path)
+                print(f"Renamed: {file.name} -> {new_name}")
+        except Exception as e:
+            print(f"Error renaming {file.name}: {e}")
 
 
 import random

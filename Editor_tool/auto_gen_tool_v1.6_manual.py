@@ -785,7 +785,8 @@ class MainWindow(QMainWindow):
     def save_level(self):
         level_id = self.level_id_spinbox.value()
         # filename = f"level_{level_id}.json"
-        filename = Path(f"levels/level_{level_id}.json")
+        # filename = Path(f"levels/level_{level_id}.json")
+        filename = Path(f"levels/{int(level_id):04d}.json")
         all_arrows = self.canvas.get_all_arrows()
         all_painted_points = set()
         for layer in self.canvas.layers:
@@ -850,7 +851,7 @@ class MainWindow(QMainWindow):
     def load_level(self):
         level_id = self.level_id_spinbox.value()
         # filename = f"level_{level_id}.json"
-        filename = Path(f"levels/level_{level_id}.json")
+        filename = filename = Path(f"levels/{int(level_id):04d}.json")
         try:
             with open(filename, 'r') as f:
                 data = json.load(f)

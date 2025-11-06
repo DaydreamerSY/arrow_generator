@@ -1,0 +1,7 @@
+level_name,template_name,start_length,length_step,min_length,size_x,size_y,is_icon,difficulty,style
+01,L_4.png,25,2,5,35,35,,Normal,Aztec
+02,M_1.png,25,2,5,35,35,,Normal,Basic
+03,M_10.png,25,2,5,35,35,,Normal,Spaghetti
+04,M_18.png,25,2,5,35,35,,Normal,Country
+05,M_26.png,25,2,5,35,35,,Normal,Loopy
+06,Daily_328.png,25,5,5,35,35,,Normal,Snake

@@ -1,15 +1,23 @@
 {
 	"folders": [
 		{
+			"name": "Editor_tool",
 			"path": "Editor_tool"
 		},
 		{
+			"name": "Analyze_level",
 			"path": "Analyze_level"
 		},
 		{
+			"name": "Gen_from_image",
 			"path": "Gen_from_image"
 		},
 		{
+			"name": "Learning Patterns",
+			"path": "Learning Patterns"
+		},
+		{
+			"name": "README",
 			"path": "README"
 		}
 	],
@@ -36,10 +44,6 @@
 				"badge": "LS"
 			},
 			{
-				"folderPath": "/Users/locnq/Documents/[Proto] Arrowscape/v2.2/Gen_from_image/level_set/level_set_1/",
-				"color": "foldercolorizer.color_0000ff"
-			},
-			{
 				"folderPath": "/Users/locnq/Documents/[Proto] Arrowscape/v2.2/Gen_from_image/level_set/level_set_3/",
 				"color": "foldercolorizer.color_660033"
 			},
@@ -50,6 +54,9 @@
 			{
 				"folderPath": "/Users/locnq/Documents/[Proto] Arrowscape/v2.2/Gen_from_image/level_set/level_set_4 test combine param/",
 				"color": "foldercolorizer.color_cc66ff"
+			},
+			{
+				"folderPath": "/Users/locnq/Documents/[Proto] Arrowscape/v2.2/Gen_from_image/level_set/"
 			}
 		],
 		"workbench.colorCustomizations": {

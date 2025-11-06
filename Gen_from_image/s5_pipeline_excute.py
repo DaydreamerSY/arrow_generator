@@ -19,6 +19,8 @@ timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 log_file = open(Path(f"logs/debug_{timestamp}.log"), "w", encoding="utf-8")
 
 # Ghi đồng thời cả ra terminal và file
+
+
 class Logger(object):
     def __init__(self, file):
         self.terminal = sys.stdout
@@ -32,12 +34,12 @@ class Logger(object):
         self.terminal.flush()
         self.log.flush()
 
+
 # Gán lại stdout
 sys.stdout = Logger(log_file)
 sys.stderr = Logger(log_file)
 
 print(f"[LOGGING] Bắt đầu ghi log vào {log_file.name}\n")
-
 
 
 def excute_file(args: Args):
@@ -108,6 +110,59 @@ def excute_single_file(args: Args):
 
 def excute_sequence_files(args: Args):
 
+    styles = {
+        "Aztec": {
+            "left_weight": 1.5,
+            "right_weight": 0.5,
+            "straight_weight": 1.0,
+            "turn_probability": 0.17,
+            "max_turns": 8,
+        },
+        "Basic": {
+            "left_weight": 1.0,
+            "right_weight": 1.0,
+            "straight_weight": 1.3,
+            "turn_probability": 0.3,
+            "max_turns": 18,
+        },
+        "Spaghetti": {
+            "left_weight": 1.0,
+            "right_weight": 1.0,
+            "straight_weight": 1.5,
+            "turn_probability": 0.4,
+            "max_turns": 29,
+        },
+        "Country": {
+            "left_weight": 1.3,
+            "right_weight": 1.1,
+            "straight_weight": 1.0,
+            "turn_probability": 0.25,
+            "max_turns": 13,
+        },
+        "Loopy": {
+            "left_weight": 2.7,
+            "right_weight": 1.15,
+            "straight_weight": 1.0,
+            "turn_probability": 0.27,
+            "max_turns": 14,
+        },
+        "Snake": {
+            "left_weight": 1.6,
+            "right_weight": 1.25,
+            "straight_weight": 1.0,
+            "turn_probability": 0.5,
+            "max_turns": 42,
+        },
+    }
+
+    # Aztec old
+    # turn_p = 0.5
+    # straight_w = 0.75
+    # left_w = 0.25
+    # right_w = 0.5
+    # max_turn = 6
+
+
 
     # print(args.csv)
     for row in args.csv.itertuples():
@@ -130,15 +185,15 @@ def excute_sequence_files(args: Args):
         _args.min_length = row.min_length
         _args.size = (row.size_x, row.size_y)
 
-        if row.style == "AZ":
+        if row.style != "":
+
             _args.generate_mode = "advance"
 
-            args.turn_probability=0.5
-            args.straight_weight=0.75
-            args.left_weight=0.25
-            args.right_weight=0.5
-            args.max_turns=6
-
+            args.left_weight = styles[row.style]["left_weight"]
+            args.right_weight = styles[row.style]["right_weight"]
+            args.straight_weight = styles[row.style]["straight_weight"]
+            args.turn_probability = styles[row.style]["turn_probability"]
+            args.max_turns = styles[row.style]["max_turns"]
 
         icons_folder_path = Path(f"{_args.level_set_path}/1_0_original_icons")
         item_path = os.path.join(icons_folder_path, _args.alter_item_name)
@@ -149,25 +204,33 @@ def excute_sequence_files(args: Args):
 
 if __name__ == "__main__":
 
-
     args = Args()
     args.level_set_path = ""
-    args.start_length = 15
     args.length_step = 5
     args.min_length = 5
     args.size = (50, 50)
 
     # Các tham số mới cho advance generator
-    args.turn_probability=0.75
-    args.straight_weight=2
-    args.left_weight=0.5
-    args.right_weight=0.5
-    args.max_turns=30
+    args.start_length = 54
+    args.turn_probability = 0.5
+    args.left_weight = 1.3
+    args.right_weight = 1.0
+    args.straight_weight = 1.0
+    args.max_turns = 18
 
-    args.generate_mode = "advance" # basic, advance
+    #                  | Aztec | Basic | Spaghetti | Country | Loopy | Snake |
+    # ------------------------------------------------------------------------
+    # start_length     | ##    | ##    | ##        |         |       |       |
+    # left_weight      | 1.5   | 1.3   | 1.3       | 1.4     | 2.8   | 1.6   |
+    # right_weight     | 1.2   | 1.0   | 1.0       | 1.1     | 1.2   | 1.25  |
+    # straight_weight  | 1.0   | 1.0   | 1.0       | 1.0     | 1.0   | 1.0   |
+    # turn_probability | 0.15  | 0.3   | 0.4       | 0.25    | 0.27  | 0.5   |
+    # max_turns        | 9     | 18    | 29        | 89      | 14    | 42    |
+
+    args.generate_mode = "advance"  # basic, advance
 
     # convert 1 file icon theo tên "item_name" trong folder "level_set/level_set_#/1_0_original_icons/" thành level
-    # args.level_set_path = Path("level_set/level_set_2")
+    # args.level_set_path = Path("level_set/level_set_1")
     # args.item_name = "Daily_328.png"
     # args.size = (30, 30)
     # excute_single_file(args)
@@ -176,17 +239,12 @@ if __name__ == "__main__":
     # args.level_set_path = Path("level_set/level_set_2")
     # excute_folder(args)
 
-
     # convert theo data.csv
     args.level_set_path = Path("level_set/level_set_3_csv")
-    args.csv_path = Path("level_set/level_set_3_csv/[Data] levels - test dataframe.csv")
+    args.csv_path = Path(
+        "level_set/level_set_3_csv/[Data] levels - test dataframe.csv")
     args.csv = args.load_csv()
-    # convert_dict = {'level_name': str}
-    # args.csv = args.csv.astype(convert_dict)
     excute_sequence_files(args)
-
-
-
 
     # test combination param để xem cái nào phù hợp nhất
     # args.level_set_path = Path("level_set/level_set_4 test combine param")
@@ -199,9 +257,9 @@ if __name__ == "__main__":
     # right_weight_values = np.linspace(0.25, 1.0, 4)
     # max_turns_values = np.linspace(2, 10, 5)
     # combinations = list(product(
-    #     turn_probability_values, 
-    #     straight_weight_values, 
-    #     left_weight_values, 
+    #     turn_probability_values,
+    #     straight_weight_values,
+    #     left_weight_values,
     #     right_weight_values,
     #     max_turns_values
     # ))
@@ -214,4 +272,3 @@ if __name__ == "__main__":
     #     args.max_turns=e
     #     args.alter_item_name = f"{args.item_name}_tp={a}_sw={b}_lw={c}_rw={d}_mt={e}"
     #     excute_single_file(args)
-

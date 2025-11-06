@@ -338,7 +338,7 @@ class HybridLevelGeneratorTestable:
         if not editable_area:
             return [], start_arrow_id, "Active layer has no painted area to generate in."
 
-        max_retries_per_arrow = 1000
+        max_retries_per_arrow = 100
         
         # 3. Tính toán ranh giới và độ lệch (offset) CỦA editable_area
         min_x = min(p[0] for p in editable_area); min_y = min(p[1] for p in editable_area)

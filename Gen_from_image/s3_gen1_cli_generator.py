@@ -62,7 +62,7 @@ class ClientGenerator:
             suggested_count = 1
         return suggested_count
 
-    def save_arrows_to_json(self, all_arrows, filename):
+    def save_arrows_to_json(self, all_arrows, filename, args):
         """Lưu danh sách các mũi tên ra file JSON chuẩn của game."""
         print(f"--- Đang lưu kết quả ra: {filename} ---")
         all_arrow_points = {p for arr in all_arrows for p in arr.points}
@@ -80,7 +80,7 @@ class ClientGenerator:
         new_x_size = max_x - min_x + 1
         new_y_size = max_y - min_y + 1
 
-        output_data = {"XSize": new_x_size, "YSize": new_y_size, "Arrows": []}
+        output_data = {"XSize": new_x_size, "YSize": new_y_size, "PictureName": args.template_name, "LevelID": args.level_id,"Arrows": []}
         
         for arrow in all_arrows:
             if not arrow.points: continue
@@ -276,7 +276,7 @@ class ClientGenerator:
 
         # 5. Lưu và hiển thị kết quả (chỉ một lần)
         if all_generated_arrows:
-            self.save_arrows_to_json(all_generated_arrows, self.args.output_file)
+            self.save_arrows_to_json(all_generated_arrows, self.args.output_file, self.args)
             self.visualize_in_console(all_generated_arrows, editable_area)
         else:
             print("Không có mũi tên nào được tạo.")

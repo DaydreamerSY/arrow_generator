@@ -112,11 +112,11 @@ def excute_sequence_files(args: Args):
 
     styles = {
         "Aztec": {
-            "left_weight": 1.5,
+            "left_weight": 0.25,
             "right_weight": 0.5,
-            "straight_weight": 1.0,
-            "turn_probability": 0.17,
-            "max_turns": 8,
+            "straight_weight": 0.75,
+            "turn_probability": 0.5,
+            "max_turns": 6,
         },
         "Basic": {
             "left_weight": 1.0,
@@ -156,10 +156,10 @@ def excute_sequence_files(args: Args):
     }
 
     # Aztec old
-    # turn_p = 0.5
-    # straight_w = 0.75
     # left_w = 0.25
     # right_w = 0.5
+    # straight_w = 0.75
+    # turn_p = 0.5
     # max_turn = 6
 
 
@@ -175,6 +175,8 @@ def excute_sequence_files(args: Args):
         icons_folder_path = Path(f"{_args.level_set_path}/1_0_original_icons")
 
         _args.item_name = row.template_name
+        _args.template_name = row.template_name
+        _args.level_id = row.level_name
 
         _args.alter_item_name = f"{int(row.level_name):04d}"
         print(f"alter name ------ {_args.alter_item_name}")
@@ -186,6 +188,7 @@ def excute_sequence_files(args: Args):
         _args.size = (row.size_x, row.size_y)
 
         if row.style != "":
+            print(f"row style {row.style}")
 
             _args.generate_mode = "advance"
 
@@ -240,9 +243,8 @@ if __name__ == "__main__":
     # excute_folder(args)
 
     # convert theo data.csv
-    args.level_set_path = Path("level_set/level_set_3_csv")
-    args.csv_path = Path(
-        "level_set/level_set_3_csv/[Data] levels - test dataframe.csv")
+    args.level_set_path = Path("level_set/level_set_4_csv_pictures")
+    args.csv_path = Path("level_set/level_set_4_csv_pictures/[Data] levels - test dataframe.csv")
     args.csv = args.load_csv()
     excute_sequence_files(args)
 

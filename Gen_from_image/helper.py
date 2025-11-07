@@ -9,7 +9,8 @@ class Args(SimpleNamespace):
     start_length: str
     length_step: str
     min_length: str
-    id: int = 0
+    level_id: str
+    template_name: str
     item_path: str
     item_name: str
     level_set_path: str
@@ -33,6 +34,7 @@ class Args(SimpleNamespace):
         # 1_0_original_icons: chứa template png -> scale lại theo size bỏ vào 1_1_icons 
         # -> convert sang board test -> generate arrow -> render ra img
         df = pd.read_csv(self.csv_path)
+        df = df.fillna("")
         return df
     
     def clone(self, **overrides):

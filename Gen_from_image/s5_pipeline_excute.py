@@ -112,9 +112,9 @@ def excute_sequence_files(args: Args):
 
     styles = {
         "Aztec": {
-            "left_weight": 0.25,
-            "right_weight": 0.5,
-            "straight_weight": 0.75,
+            "left_weight": 0.01,
+            "right_weight": 5,
+            "straight_weight": 5,
             "turn_probability": 0.5,
             "max_turns": 6,
         },
@@ -166,7 +166,7 @@ def excute_sequence_files(args: Args):
 
     # print(args.csv)
     for row in args.csv.itertuples():
-        # print(row.Index, row.template_name, row.size_x)
+        print(row.Index, row.template_name, row.size_x, row.style)
 
         _args = args.clone()
 
@@ -187,9 +187,10 @@ def excute_sequence_files(args: Args):
         _args.min_length = row.min_length
         _args.size = (row.size_x, row.size_y)
 
-        if row.style != "":
-            print(f"row style {row.style}")
 
+        print(f"row style {row.style}")
+
+        if row.style != "":
             _args.generate_mode = "advance"
 
             args.left_weight = styles[row.style]["left_weight"]
@@ -236,6 +237,7 @@ if __name__ == "__main__":
     # args.level_set_path = Path("level_set/level_set_1")
     # args.item_name = "Daily_328.png"
     # args.size = (30, 30)
+    # args.style = "Aztec"
     # excute_single_file(args)
 
     # convert toàn bộ file image trong toàn bộ folder "level_set/level_set_#/1_0_original_icons/" thành level

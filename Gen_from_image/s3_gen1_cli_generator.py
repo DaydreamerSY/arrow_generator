@@ -80,7 +80,10 @@ class ClientGenerator:
         new_x_size = max_x - min_x + 1
         new_y_size = max_y - min_y + 1
 
-        output_data = {"XSize": new_x_size, "YSize": new_y_size, "PictureName": args.template_name, "LevelID": args.level_id,"Arrows": []}
+        if hasattr(args, 'template_name'):
+            output_data = {"XSize": new_x_size, "YSize": new_y_size, "PictureName": args.template_name, "LevelID": args.level_id,"Arrows": []}
+        else:
+            output_data = {"XSize": new_x_size, "YSize": new_y_size, "PictureName": args.item_name,"Arrows": []}
         
         for arrow in all_arrows:
             if not arrow.points: continue

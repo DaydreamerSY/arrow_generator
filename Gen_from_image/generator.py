@@ -4,6 +4,9 @@
 # và nhận các đối tượng cần thiết làm tham số để dễ dàng unit test.
 
 import random
+import progressbar
+
+from rich.progress import track
 
 # --- DATA STRUCTURES (Phụ thuộc) ---
 class Arrow:
@@ -61,6 +64,7 @@ class HybridLevelGeneratorTestable:
     """
     
     def __init__(self):
+        self.progress_bar = progressbar.ProgressBar()
         pass # Không cần trạng thái
 
     def _perform_random_walk(self, start_pos, all_occupied_points, editable_area, gen_grid_w, gen_grid_h, max_len=30):
@@ -130,8 +134,11 @@ class HybridLevelGeneratorTestable:
         max_walk_len = max_len 
         # === MODIFICATION END ===
 
+        self.progress_bar = progressbar.ProgressBar(maxval=num_to_gen)
+        self.progress_bar.start()
         for i in range(num_to_gen):
-            print(f"Trying to generate arrow {i+1}/{num_to_gen}...")
+            self.progress_bar.update(i + 1)
+            # print(f"Trying to generate arrow {i+1}/{num_to_gen}...")
             found_arrow = False
             for retry in range(max_retries_per_arrow):
                 p2_candidates = []
@@ -205,6 +212,102 @@ class HybridLevelGeneratorTestable:
     # -------------------------------------------------------------------
     # --- PHẦN MỚI THÊM: LOGIC TẠO LEVEL NÂNG CAO ---
     # -------------------------------------------------------------------
+
+    def _perform_advance_walk_2(self, start_pos, prev_pos, all_occupied_points, editable_area, 
+                                gen_grid_w, gen_grid_h, max_len=30,
+                                # Các tham số mới: Bỏ turn_probability
+                                straight_weight=1.5,
+                                left_weight=1.0,
+                                right_weight=1.0,
+                                max_turns=99):
+        """
+        Một hàm random walk có trạng thái, phiên bản 2.
+        Trực tiếp chọn ngẫu nhiên giữa các hướng hợp lệ (Thẳng, Trái, Phải)
+        dựa trên trọng số (weight) của chúng.
+        
+        Params:
+        - straight_weight: (float) Trọng số cho việc đi thẳng.
+        - left_weight: (float) Trọng số cho việc quẹo trái.
+        - right_weight: (float) Trọng số cho việc quẹo phải.
+        - max_turns: (int) Số lần quẹo tối đa trước khi dừng.
+        """
+        path = [start_pos]
+        visited = {start_pos}
+        current_pos = start_pos
+        current_prev_pos = prev_pos # Theo dõi vị trí trước đó
+        turn_count = 0
+
+        # Mapping các loại di chuyển tới trọng số của chúng
+        weights_map = {
+            "straight": straight_weight,
+            "left": left_weight,
+            "right": right_weight
+        }
+
+        for _ in range(int(max_len) - 1):
+            if turn_count >= max_turns:
+                break # Đã đạt giới hạn quẹo
+
+            # 1. Tính hướng đi hiện tại (current_pos - current_prev_pos)
+            dx = current_pos[0] - current_prev_pos[0]
+            dy = current_pos[1] - current_prev_pos[1]
+            current_dir = (dx, dy)
+
+            # 2. Phân loại các bước đi (Thẳng, Trái, Phải)
+            straight_dir = current_dir
+            left_dir = (-dy, dx)
+            right_dir = (dy, -dx)
+
+            possible_moves = {
+                "straight": (current_pos[0] + straight_dir[0], current_pos[1] + straight_dir[1]),
+                "left": (current_pos[0] + left_dir[0], current_pos[1] + left_dir[1]),
+                "right": (current_pos[0] + right_dir[0], current_pos[1] + right_dir[1]),
+            }
+
+            # 3. Lọc các bước đi hợp lệ VÀ có trọng số > 0
+            choices_list = [] # Sẽ chứa (neighbor, move_type)
+            weights_list = [] # Sẽ chứa weight tương ứng
+
+            for move_type, weight in weights_map.items():
+                
+                # Bỏ qua ngay nếu trọng số bằng 0 (hoặc âm)
+                if weight <= 0:
+                    continue
+                
+                # Lấy vị trí (pos) từ dict possible_moves
+                pos = possible_moves.get(move_type)
+                
+                nx, ny = pos
+                neighbor = (nx, ny)
+                
+                # Kiểm tra xem có hợp lệ không (giữ nguyên logic kiểm tra)
+                if not (0 <= nx < gen_grid_w and 0 <= ny < gen_grid_h): continue
+                if neighbor not in editable_area: continue
+                if neighbor in all_occupied_points or neighbor in visited: continue
+
+                # Nếu hợp lệ VÀ có trọng số, thêm vào danh sách
+                choices_list.append((neighbor, move_type))
+                weights_list.append(weight)
+
+            # 4. Kiểm tra nếu bị kẹt
+            if not choices_list:
+                # Bị kẹt. Không còn đường đi hợp lệ HOẶC tất cả
+                # các đường hợp lệ đều có trọng số <= 0.
+                break 
+
+            # 5. Chọn một bước đi (dựa trên trọng số)
+            chosen_move, chosen_type = random.choices(choices_list, weights_list, k=1)[0]
+            
+            # 6. Cập nhật trạng thái
+            if chosen_type != "straight":
+                turn_count += 1
+
+            path.append(chosen_move)
+            visited.add(chosen_move)
+            current_prev_pos = current_pos # Cập nhật
+            current_pos = chosen_move
+            
+        return path
 
     def _perform_advanced_walk(self, start_pos, prev_pos, all_occupied_points, editable_area, 
                                 gen_grid_w, gen_grid_h, max_len=30,
@@ -393,7 +496,7 @@ class HybridLevelGeneratorTestable:
                 temp_occupied = gen_occupied_points.union({p1}) 
                 
                 # --- THAY ĐỔI CHÍNH NẰM Ở ĐÂY ---
-                path_body = self._perform_advanced_walk( # <--- GỌI HÀM WALK MỚI
+                path_body = self._perform_advance_walk_2( # <--- GỌI HÀM WALK MỚI
                     start_p2, 
                     prev_pos=p1, # <--- Cung cấp vị trí trước đó
                     all_occupied_points=temp_occupied, 
@@ -402,7 +505,7 @@ class HybridLevelGeneratorTestable:
                     gen_grid_h=gen_grid_h, 
                     max_len=max_walk_len - 1,
                     # Truyền các tham số điều khiển
-                    turn_probability=turn_probability,
+                    # turn_probability=turn_probability,
                     straight_weight=straight_weight,
                     left_weight=left_weight,
                     right_weight=right_weight,

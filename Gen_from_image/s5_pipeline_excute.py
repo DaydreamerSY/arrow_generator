@@ -13,28 +13,100 @@ import numpy as np
 
 import sys
 import datetime
+import inspect
 
 # === GHI LOG RA FILE ===
 timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 log_file = open(Path(f"logs/debug_{timestamp}.log"), "w", encoding="utf-8")
 
 # Ghi đồng thời cả ra terminal và file
-
-
 class Logger(object):
     def __init__(self, file):
         self.terminal = sys.stdout
         self.log = file
+        self.at_start_of_line = True
+        
+        try:
+            self.logger_filename = os.path.abspath(__file__)
+        except NameError:
+            self.logger_filename = os.path.abspath(inspect.currentframe().f_code.co_filename)
+        
+        try:
+            self.cwd = os.getcwd()
+        except OSError:
+            self.cwd = None
+
+    def _get_caller_info(self):
+        """
+        Hàm trợ giúp: Đi ngược call stack để tìm file đã gọi print.
+        Trả về: (full_path, line_number)
+        """
+        try:
+            stack = inspect.stack()
+            
+            for frame_info in stack[2:]:
+                filename = os.path.abspath(frame_info.filename)
+                
+                if filename == self.logger_filename:
+                    continue
+                
+                basename = os.path.basename(filename)
+                if basename in ['io.py', 'code.py', 'runpy.py']:
+                    continue
+                
+                return (filename, frame_info.lineno)
+                
+        except Exception:
+            pass 
+        
+        return (None, 0) # Fallback
 
     def write(self, message):
+        if not message:
+            return
+
+        if self.at_start_of_line and message.strip():
+            full_path, line_no = self._get_caller_info()
+            
+            if full_path:
+                # --- BẮT ĐẦU THAY ĐỔI ---
+                
+                # 1. Tạo đường dẫn cho Log (Tuyệt đối)
+                log_prefix = f"[{full_path}:{line_no}] " 
+                
+                # 2. Tạo đường dẫn cho Terminal (Tương đối)
+                display_path = full_path
+                if self.cwd:
+                    try:
+                        rel_path = os.path.relpath(full_path, self.cwd)
+                        display_path = rel_path
+                    except ValueError:
+                        pass # Giữ full_path nếu ở ổ đĩa khác
+                
+                terminal_prefix = f"[{display_path}:{line_no}] "
+                
+                # 3. Viết prefix riêng cho từng nơi
+                self.terminal.write(terminal_prefix)
+                self.log.write(log_prefix)
+                
+                # --- KẾT THÚC THAY ĐỔI ---
+            else:
+                prefix = f"[unknown:0] "
+                self.terminal.write(prefix)
+                self.log.write(prefix)
+            
+            self.at_start_of_line = False
+
+        # Viết message gốc cho cả hai
         self.terminal.write(message)
         self.log.write(message)
 
-    def flush(self):  # để tránh lỗi buffer
+        if message.endswith('\n'):
+            self.at_start_of_line = True
+
+    def flush(self):
         self.terminal.flush()
         self.log.flush()
-
-
 # Gán lại stdout
 sys.stdout = Logger(log_file)
 sys.stderr = Logger(log_file)
@@ -166,7 +238,7 @@ def excute_sequence_files(args: Args):
 
     # print(args.csv)
     for row in args.csv.itertuples():
-        print(row.Index, row.template_name, row.size_x, row.style)
+        # print(row.Index, row.template_name, row.size_x, row.style)
 
         _args = args.clone()
 
@@ -189,15 +261,18 @@ def excute_sequence_files(args: Args):
 
 
         print(f"row style {row.style}")
+        print(f"row style != '' ? {row.style != ''}")
 
         if row.style != "":
             _args.generate_mode = "advance"
 
-            args.left_weight = styles[row.style]["left_weight"]
-            args.right_weight = styles[row.style]["right_weight"]
-            args.straight_weight = styles[row.style]["straight_weight"]
-            args.turn_probability = styles[row.style]["turn_probability"]
-            args.max_turns = styles[row.style]["max_turns"]
+            _args.left_weight = styles[row.style]["left_weight"]
+            _args.right_weight = styles[row.style]["right_weight"]
+            _args.straight_weight = styles[row.style]["straight_weight"]
+            _args.turn_probability = styles[row.style]["turn_probability"]
+            _args.max_turns = styles[row.style]["max_turns"]
+
+            print(_args)
 
         icons_folder_path = Path(f"{_args.level_set_path}/1_0_original_icons")
         item_path = os.path.join(icons_folder_path, _args.alter_item_name)

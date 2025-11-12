@@ -472,8 +472,9 @@ class HybridLevelGeneratorTestable:
         max_len = int(avg_length * 1.0)
         max_walk_len = max_len 
 
-        for i in range(num_to_gen):
-            print(f"Trying to generate (adv) arrow {i+1}/{num_to_gen}...")
+        # for i in range(num_to_gen):
+        for i in track(range(num_to_gen), description=f"Try to generate (adv) arrow ..."):
+            # print(f"Trying to generate (adv) arrow {i+1}/{num_to_gen}...")
             found_arrow = False
             for retry in range(max_retries_per_arrow):
                 p2_candidates = []

@@ -275,7 +275,7 @@ def excute_sequence_files(args: Args):
             _args.turn_probability = styles[row.style]["turn_probability"]
             _args.max_turns = styles[row.style]["max_turns"]
 
-            print(_args)
+            # print(_args)
 
         icons_folder_path = Path(f"{_args.level_set_path}/1_0_original_icons")
         item_path = os.path.join(icons_folder_path, _args.alter_item_name)
@@ -324,8 +324,8 @@ if __name__ == "__main__":
     # convert theo data.csv
     # args.level_set_path = Path("level_set/level_set_4_csv_pictures")
     # args.csv_path = Path("level_set/level_set_4_csv_pictures/[Data] levels - test dataframe.csv")
-    args.level_set_path = Path(__file__).parent / "level_set" / "level_set_4_csv_pictures"
-    args.csv_path = Path(__file__).parent / "level_set" / "level_set_4_csv_pictures" / "[Data] levels - test dataframe.csv"
+    args.level_set_path = Path(__file__).parent / "level_set" / "level_set_5_csv"
+    args.csv_path = Path(__file__).parent / "level_set" / "level_set_5_csv" / "[Data] levels - test dataframe.csv"
     args.csv = args.load_csv()
     excute_sequence_files(args)
 

@@ -81,7 +81,7 @@ class ClientGenerator:
         new_y_size = max_y - min_y + 1
 
         if hasattr(args, 'template_name'):
-            output_data = {"XSize": new_x_size, "YSize": new_y_size, "PictureName": args.template_name, "LevelID": args.level_id,"Arrows": []}
+            output_data = {"XSize": new_x_size, "YSize": new_y_size, "PictureName": args.template_name.replace(".png", ""), "LevelID": args.level_id,"Arrows": []}
         else:
             output_data = {"XSize": new_x_size, "YSize": new_y_size, "PictureName": args.item_name,"Arrows": []}
         
@@ -202,7 +202,7 @@ class ClientGenerator:
                 
                 # Kiểm tra xem có ghi đè lên đầu mũi tên khác không
                 # (Chúng ta muốn đầu mũi tên luôn thắng)
-                if points_map[p_tail] not in ['^', 'v', '<', '>']:
+                if points_map[p_tail] not in ['↑', '↓', '←', '→']:
                     dx = p_tail[0] - p_prev[0]
                     if dx != 0:
                         points_map[p_tail] = '─' # Ngang
@@ -212,10 +212,10 @@ class ClientGenerator:
             # --- VẼ ĐẦU (HEAD) (điểm 0) ---
             # Vẽ sau cùng để đảm bảo nó ghi đè lên mọi thứ
             head = path[0]; d = arr.direction
-            if d == (0, -1): char = '^'
-            elif d == (0, 1): char = 'v'
-            elif d == (-1, 0): char = '<'
-            elif d == (1, 0): char = '>'
+            if d == (0, -1): char = '↑'
+            elif d == (0, 1): char = '↓'
+            elif d == (-1, 0): char = '←'
+            elif d == (1, 0): char = '→'
             else: char = 'O' # Chéo
             
             points_map[head] = char

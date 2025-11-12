@@ -193,7 +193,7 @@ def excute_sequence_files(args: Args):
         "Basic": {
             "left_weight": 1.0,
             "right_weight": 1.0,
-            "straight_weight": 1.3,
+            "straight_weight": 1.0,
             "turn_probability": 0.3,
             "max_turns": 18,
         },
@@ -320,8 +320,8 @@ if __name__ == "__main__":
     # excute_folder(args)
 
     # convert theo data.csv
-    args.level_set_path = Path("level_set/level_set_4_csv_pictures")
-    args.csv_path = Path("level_set/level_set_4_csv_pictures/[Data] levels - test dataframe.csv")
+    args.level_set_path = Path("level_set/level_set_5_csv")
+    args.csv_path = Path("level_set/level_set_5_csv/[Data] levels - test dataframe.csv")
     args.csv = args.load_csv()
     excute_sequence_files(args)
 

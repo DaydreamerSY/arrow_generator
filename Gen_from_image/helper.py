@@ -70,19 +70,86 @@ def rename_json_files(folder_path: str):
 
 
 import random
+from collections import defaultdict
 
 if __name__ == "__main__":
 
-    name_list = [
-        "square.png",
-        "circle.png",
-        "hexagon.png",
-        "pentagon.png",
-        "star.png",
-    ]
+    # ======= Cấu hình =======
+    # name_list = ["square", "circle", "pentagon", "triangle", "rhombus", "rectangle"]
+    name_list = ["Aztec", "Snake", "Spaghetti"]
+    total_items = 625
+    min_distance = 1
+    step_hard = 7
+    step_very_hard = 21
+    random.seed(3009199911112025114200001)
 
-    _name_list_loop = name_list * 4
-    random.shuffle(_name_list_loop)
-    for i in _name_list_loop:
+    # ======= Sinh list ngẫu nhiên dàn đều =======
+    count_per_item = total_items // len(name_list)
+    pool = [n for n in name_list for _ in range(count_per_item)]
+
+    while len(pool) < total_items:
+        pool.append(random.choice(name_list))
+
+    result = []
+    recent = []
+
+    while pool:
+        candidates = [x for x in set(pool) if x not in recent]
+        if not candidates:
+            recent = []
+            candidates = list(set(pool))
+        choice = random.choice(candidates)
+        result.append(choice)
+        pool.remove(choice)
+        recent.append(choice)
+        if len(recent) > min_distance:
+            recent.pop(0)
+
+    # ======= Gắn cờ hard / very hard =======
+    # for i in range(len(result)):
+    #     if i % step_very_hard == 0:
+    #         result[i] = "-----very_hard-----"
+    #     elif i % step_hard == 0:
+    #         result[i] = "-------hard--------"
+
+    # ======= Hàm thống kê lặp lại =======
+    def analyze_repeats(seq, group_size=2):
+        """Trả về thông tin bộ (group_size) bị lặp lại, vị trí và khoảng cách."""
+        seen = defaultdict(list)
+        for i in range(len(seq) - group_size + 1):
+            key = tuple(seq[i:i+group_size])
+            seen[key].append(i)
+
+        report = []
+        for key, positions in seen.items():
+            if len(positions) > 1:
+                distances = [positions[i+1] - positions[i] for i in range(len(positions)-1)]
+                report.append({
+                    "pattern": key,
+                    "count": len(positions),
+                    "positions": positions,
+                    "min_distance": min(distances) if distances else None
+                })
+        return report
+
+    # ======= Phân tích bộ 2 và bộ 3 =======
+    report_2 = analyze_repeats(result, 2)
+    report_3 = analyze_repeats(result, 3)
+
+    # ======= In thống kê =======
+    def print_report(report, title):
+        print(f"\n===== {title} =====")
+        if not report:
+            print("Không có bộ nào bị lặp lại.")
+            return
+        for r in sorted(report, key=lambda x: x["min_distance"] or 999):
+            print(f"{r['pattern']} -> lặp {r['count']} lần, khoảng cách nhỏ nhất {r['min_distance']}, vị trí {r['positions']}")
+
+    print_report(report_2, "BỘ 2 LẶP LẠI")
+    print_report(report_3, "BỘ 3 LẶP LẠI")
+
+    # ======= Kiểm tra nhanh output =======
+    print("\n--- Một phần sequence ---")
+    for i in result:
         print(i)
 

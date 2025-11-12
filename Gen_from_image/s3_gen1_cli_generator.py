@@ -80,7 +80,10 @@ class ClientGenerator:
         new_x_size = max_x - min_x + 1
         new_y_size = max_y - min_y + 1
 
-        output_data = {"XSize": new_x_size, "YSize": new_y_size, "PictureName": args.template_name, "LevelID": args.level_id,"Arrows": []}
+        if hasattr(args, 'template_name'):
+            output_data = {"XSize": new_x_size, "YSize": new_y_size, "PictureName": args.template_name.replace(".png", ""), "LevelID": args.level_id,"Arrows": []}
+        else:
+            output_data = {"XSize": new_x_size, "YSize": new_y_size, "PictureName": args.item_name,"Arrows": []}
         
         for arrow in all_arrows:
             if not arrow.points: continue
@@ -107,33 +110,121 @@ class ClientGenerator:
         except Exception as e:
             print(f"Lỗi khi lưu file JSON: {e}")
 
+    def _get_unicode_body_char(self, p_prev, p_curr, p_next):
+        """
+        Hàm trợ giúp để xác định đúng ký tự Unicode (─, │, ┌, ┐, └, ┘)
+        bằng cách xem xét 3 điểm.
+        """
+        # 1. Tính toán vector "vào" (từ prev -> curr)
+        dx_in = p_curr[0] - p_prev[0]
+        dy_in = p_curr[1] - p_prev[1]
+        
+        # 2. Tính toán vector "ra" (từ curr -> next)
+        dx_out = p_next[0] - p_curr[0]
+        dy_out = p_next[1] - p_curr[1]
+
+        # 3. Trường hợp đi thẳng
+        if (dx_in != 0 and dx_out != 0): return '─' # Ngang
+        if (dy_in != 0 and dy_out != 0): return '│' # Dọc
+
+        # 4. Trường hợp góc
+        # (dx_in, dy_in) -> (dx_out, dy_out)
+        
+        # Lên -> Phải or (Trái -> Xuống)
+        if (dy_in == -1 and dx_out == 1) or (dx_in == -1 and dy_out == 1):
+            return '┌'
+        
+        # Phải -> Lên or (Xuống -> Trái)
+        if (dx_in == 1 and dy_out == -1) or (dy_in == 1 and dx_out == -1):
+            return '┘'
+        
+        # Lên -> Trái or (Phải -> Xuống)
+        if (dy_in == -1 and dx_out == -1) or (dx_in == 1 and dy_out == 1):
+            return '┐'
+
+        # Xuống -> Phải or (Trái -> Lên)
+        if (dy_in == 1 and dx_out == 1) or (dx_in == -1 and dy_out == -1):
+            return '└'
+        
+        # Fallback (không nên xảy ra với di chuyển 8 hướng)
+        return '+'
+
     def visualize_in_console(self, arrows, editable_area):
         """(Tùy chọn) In một bản đồ ASCII của kết quả ra console."""
-        print("--- Bản đồ kết quả (ASCII) ---")
+        print("--- Bản đồ kết quả (Unicode) ---")
         points_map = defaultdict(lambda: ' ')
+        
+        # 1. Tính toán ranh giới
         all_points_for_bounds = set(editable_area)
         for arr in arrows: all_points_for_bounds.update(arr.points)
         if not all_points_for_bounds:
             print("(Trống)"); return
+            
         min_x = min(p[0] for p in all_points_for_bounds) - 1
         max_x = max(p[0] for p in all_points_for_bounds) + 1
         min_y = min(p[1] for p in all_points_for_bounds) - 1
         max_y = max(p[1] for p in all_points_for_bounds) + 1
+
+        # 2. Vẽ khu vực edit (luôn vẽ cái này trước)
         for y in range(min_y, max_y + 1):
             for x in range(min_x, max_x + 1):
-                if (x,y) in editable_area: points_map[(x,y)] = '.' 
+                if (x,y) in editable_area: points_map[(x,y)] = ' ' 
+        
+        # 3. Vẽ các mũi tên
         for arr in arrows:
-            for p in arr.points[1:]: points_map[p] = '#'
-            head = arr.points[0]; d = arr.direction
-            if d == (0, -1): char = '^'
-            elif d == (0, 1): char = 'v'
-            elif d == (-1, 0): char = '<'
-            elif d == (1, 0): char = '>'
-            else: char = 'O'
+            path = arr.points
+            n = len(path)
+            
+            if n == 0: continue
+
+            # --- VẼ THÂN (BODY) MŨI TÊN (từ điểm 1 đến n-2) ---
+            # Chúng ta cần 3 điểm để vẽ 1 ký tự,
+            # nên vòng lặp này chỉ chạy cho các điểm ở giữa.
+            for i in range(1, n - 1):
+                p_prev = path[i-1]
+                p_curr = path[i]
+                p_next = path[i+1]
+                
+                # Bỏ qua nếu có di chuyển chéo (logic này chỉ xử lý 4 hướng)
+                if (p_prev[0] != p_curr[0] and p_prev[1] != p_curr[1]) or \
+                   (p_curr[0] != p_next[0] and p_curr[1] != p_next[1]):
+                   points_map[p_curr] = '*' # Dùng '*' cho đường chéo
+                   continue
+                   
+                char = self._get_unicode_body_char(p_prev, p_curr, p_next)
+                points_map[p_curr] = char
+
+            # --- VẼ ĐUÔI (TAIL) (điểm cuối cùng n-1) ---
+            # Đuôi chỉ cần biết hướng đi từ điểm áp chót
+            if n > 1:
+                p_tail = path[n-1]
+                p_prev = path[n-2]
+                
+                # Kiểm tra xem có ghi đè lên đầu mũi tên khác không
+                # (Chúng ta muốn đầu mũi tên luôn thắng)
+                if points_map[p_tail] not in ['↑', '↓', '←', '→']:
+                    dx = p_tail[0] - p_prev[0]
+                    if dx != 0:
+                        points_map[p_tail] = '─' # Ngang
+                    else:
+                        points_map[p_tail] = '│' # Dọc
+
+            # --- VẼ ĐẦU (HEAD) (điểm 0) ---
+            # Vẽ sau cùng để đảm bảo nó ghi đè lên mọi thứ
+            head = path[0]; d = arr.direction
+            if d == (0, -1): char = '↑'
+            elif d == (0, 1): char = '↓'
+            elif d == (-1, 0): char = '←'
+            elif d == (1, 0): char = '→'
+            else: char = 'O' # Chéo
+            
             points_map[head] = char
+        
+        # 4. In kết quả ra console
         for y in range(min_y, max_y + 1):
             line = ""
-            for x in range(min_x, max_x + 1): line += points_map[(x,y)]
+            for x in range(min_x, max_x + 1): 
+                line += points_map[(x,y)]
             print(line)
 
     def excute(self):

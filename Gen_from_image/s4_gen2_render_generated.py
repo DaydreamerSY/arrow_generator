@@ -40,7 +40,7 @@ class Renderer:
         ax.set_aspect("equal")
         ax.invert_yaxis() # Trục Y đi xuống
         plt.axis("off")
-        plt.title(f"{name} — ({len(all_arrows)} arrows)", fontsize=9)
+        plt.title(f"{name} — ({len(all_arrows)} arrows) - {level_data.get('PictureName')}", fontsize=9)
 
         # --- Tạo màu ngẫu nhiên (Giữ nguyên từ file mẫu) ---
         random.seed(42) # Giữ seed để màu sắc ổn định

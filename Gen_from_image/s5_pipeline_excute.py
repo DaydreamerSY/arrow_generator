@@ -13,6 +13,7 @@ import numpy as np
 
 import sys
 import datetime
+import inspect
 
 # === GHI LOG RA FILE ===
 timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -50,8 +51,8 @@ class Logger(object):
             for frame_info in stack[2:]:
                 filename = os.path.abspath(frame_info.filename)
                 
-                if filename == self.logger_filename:
-                    continue
+                # if filename == self.logger_filename:
+                #     continue
                 
                 basename = os.path.basename(filename)
                 if basename in ['io.py', 'code.py', 'runpy.py']:

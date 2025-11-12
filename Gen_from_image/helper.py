@@ -18,7 +18,7 @@ class Args(SimpleNamespace):
 
     alter_item_name: str
 
-    csv_path: str
+    csv_path: Path
     csv: pd.DataFrame
 
     generate_mode: str

@@ -16,7 +16,9 @@ import datetime
 
 # === GHI LOG RA FILE ===
 timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-log_file = open(Path(f"logs/debug_{timestamp}.log"), "w", encoding="utf-8")
+log_path = Path(f"logs/debug_{timestamp}.log")
+log_path.parent.mkdir(parents=True, exist_ok=True)
+log_file = open(log_path, "a", encoding="utf-8")
 
 # Ghi đồng thời cả ra terminal và file
 
@@ -58,19 +60,16 @@ def excute_file(args: Args):
     _img_resized_path = resizer.resize_image(
         input_path=args.item_path,
         new_size=args.size,
-        output_folder=Path(f"{args.level_set_path}/1_1_icons")
+        output_folder=args.level_set_path / "1_1_icons"
     )
 
     _board_test_path = converter.convert_image_to_board(
         input_path=_img_resized_path,
-        output_path=Path(
-            f"{args.level_set_path}/1_board_test/{item_name.replace('.png', '.txt')}")
+        output_path=args.level_set_path / "1_board_test" / item_name.replace('.png', '.txt')
     )
 
-    _generated_json_path = Path(
-        f"{args.level_set_path}/2_result_test/{item_name.replace('.png', '')}.json")
-    _rendered_png_path = Path(
-        f"{args.level_set_path}/3_render/{item_name.replace('.png', '')}.png")
+    _generated_json_path = args.level_set_path / "2_result_test" / f"{item_name.replace('.png', '')}"
+    _rendered_png_path = args.level_set_path / "3_render" / f"{item_name.replace('.png', '')}.png"
 
     args.input_file = _board_test_path
     args.output_file = _generated_json_path
@@ -85,7 +84,8 @@ def excute_file(args: Args):
 
 
 def excute_folder(args: Args):
-    icons_folder_path = Path(f"{args.level_set_path}/1_0_original_icons")
+    # icons_folder_path = Path(f"{args.level_set_path}/1_0_original_icons")
+    icons_folder_path = args.level_set_path / "1_0_original_icons"
 
     for item_name in os.listdir(icons_folder_path):
         if item_name == ".DS_Store":
@@ -102,7 +102,8 @@ def excute_single_file(args: Args):
     # level_set_path = "level_set/level_set_2"
     # folder_path = f"{level_set_path}/1_0_original_icons"  # Replace with your target folder
     # Replace with your target folder
-    icons_folder_path = Path(f"{args.level_set_path}/1_0_original_icons")
+    # icons_folder_path = Path(f"{args.level_set_path}/1_0_original_icons")
+    icons_folder_path = args.level_set_path / "1_0_original_icons"
     item_path = os.path.join(icons_folder_path, args.item_name)
     args.item_path = item_path
     excute_file(args)
@@ -243,8 +244,10 @@ if __name__ == "__main__":
     # excute_folder(args)
 
     # convert theo data.csv
-    args.level_set_path = Path("level_set/level_set_4_csv_pictures")
-    args.csv_path = Path("level_set/level_set_4_csv_pictures/[Data] levels - test dataframe.csv")
+    # args.level_set_path = Path("level_set/level_set_4_csv_pictures")
+    # args.csv_path = Path("level_set/level_set_4_csv_pictures/[Data] levels - test dataframe.csv")
+    args.level_set_path = Path(__file__).parent / "level_set" / "level_set_4_csv_pictures"
+    args.csv_path = Path(__file__).parent / "level_set" / "level_set_4_csv_pictures" / "[Data] levels - test dataframe.csv"
     args.csv = args.load_csv()
     excute_sequence_files(args)
 

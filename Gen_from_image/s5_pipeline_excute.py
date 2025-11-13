@@ -10,66 +10,57 @@ from itertools import product
 import sys, os, datetime
 import pandas as pd
 import numpy as np
+import multiprocessing
 
 import concurrent.futures
 from functools import partial
-from rich.progress import track
+from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn, track
 from loguru import logger
-log = logger.info
-err = logger.error
-warn = logger.warning
-dbg = logger.debug
+# log = logger.info
+# err = logger.error
+# warn = logger.warning
+# dbg = logger.debug
 
 # === KHỐI LOGGING MỚI (AN TOÀN CHO ĐA XỬ LÝ) ===
-
-def setup_logging():
+def setup_loguru(log_path_str: str, tui_mode: bool = False):
     """
-    Hàm này cấu hình loguru. 
-    Nó sẽ được gọi bởi cả tiến trình chính và con.
+    Cấu hình logger.
+    - tui_mode=False: Log ra cả file và terminal (mặc định)
+    - tui_mode=True: Chỉ log ra file (dùng khi chạy dashboard TUI)
     """
-    
-    # 1. Kiểm tra biến môi trường
-    log_path_str = os.environ.get("MY_APP_LOG_PATH")
-    
-    if not log_path_str:
-        # ---- Đây là TIẾN TRÌNH CHÍNH (chạy lần đầu) ----
-        # 1a. Tạo timestamp và path MỘT LẦN
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        log_path = Path(f"logs/debug_{timestamp}.log")
-        
-        # 1b. SET BIẾN MÔI TRƯỜNG CHO CÁC TIẾN TRÌNH CON
-        os.environ["MY_APP_LOG_PATH"] = str(log_path)
-    else:
-        # ---- Đây là TIẾN TRÌNH CON (đã được set env var) ----
-        # 2. Chỉ cần đọc lại đường dẫn đã được tạo
-        log_path = Path(log_path_str)
-        
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # 3. Cấu hình logger
     logger.remove() # Xóa handler mặc định
     
-    # Sink 1: Terminal (dễ đọc)
-    logger.add(sys.stderr, level="INFO", format="<level>{message}</level>")
+    if not tui_mode:
+        # Nếu KHÔNG ở chế độ TUI, thêm sink cho terminal
+        logger.add(
+            sys.stderr, 
+            level="INFO", 
+            format="<level>{message}</level>"
+        )
     
-    # Sink 2: File (an toàn, đầy đủ)
+    # Sink 2: File (luôn luôn được thêm)
+    # (Đảm bảo log_path_str là string hoặc Path)
+    log_path = Path(log_path_str)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    
     logger.add(
         log_path, 
         level="DEBUG",
         rotation="10 MB",
         enqueue=True,     # <-- CHÌA KHÓA cho đa xử lý
-        format="{time:HH:mm:ss.SSS} | {level:<8} | {process.name} | {name}:{function}:{line} - {message}"
+        format="{time:HH:mm:ss.SSS} | {level:<8} | ... - {message}" 
+        # (Giữ format cũ của bạn)
     )
-    return log_path # Trả về path đã dùng
+    logger.info(f"Logger đã cấu hình (TUI Mode: {tui_mode}). Ghi log vào {log_path}")
 
 # 4. GỌI HÀM SETUP NGAY LẬP TỨC (Ở GLOBAL SCOPE)
 # Tiến trình chính sẽ chạy, không thấy env var, tự tạo path và set env var.
 # Tiến trình con sẽ chạy, *thấy* env var, và dùng path đó.
-log_path = setup_logging()
+# log_path = setup_loguru()
 
 # 7. In dòng log đầu tiên (sẽ chạy ở cả main và các core)
 # Giờ đây tất cả sẽ in ra CÙNG MỘT TÊN FILE
-logger.info(f"Logger đã được patch. Bắt đầu ghi log vào {log_path}")
+# logger.info(f"Logger đã được patch. Bắt đầu ghi log vào {log_path}")
 
 # === KẾT THÚC KHỐI LOGGING ===
 
@@ -77,13 +68,33 @@ logger.info(f"Logger đã được patch. Bắt đầu ghi log vào {log_path}")
 # --- ĐÂY LÀ HÀM MỚI (WORKER) ---
 # (Hàm này phải nằm ở top-level, bên ngoài hàm excute_sequence_files)
 
-def process_csv_row(row, original_args, styles_dict):
+# Thêm cờ (flag) để đảm bảo worker chỉ setup 1 lần
+_WORKER_LOGGING_INITIALIZED = False
+
+def process_csv_row(row, original_args, styles_dict, log_path_str, progress_queue):
     """
-    Hàm này xử lý MỘT dòng CSV. Nó sẽ được chạy song song.
-    'row' bây giờ là một DICT.
+    Hàm worker xử lý 1 dòng CSV.
+    - Gửi log vào file qua loguru.
+    - Gửi tiến độ qua progress_queue.
     """
+    global _WORKER_LOGGING_INITIALIZED
+    
+    # 1. Cấu hình logging cho worker này (ở chế độ TUI)
+    if not _WORKER_LOGGING_INITIALIZED:
+        # BẮT BUỘC tui_mode=True để worker không làm hỏng dashboard
+        setup_loguru(log_path_str, tui_mode=True) 
+        _WORKER_LOGGING_INITIALIZED = True
+
     try:
-        # 1. Sao chép args và thiết lập thông số
+        # Lấy ID của core (ví dụ: 'SpawnProcess-5')
+        process_name = multiprocessing.current_process().name
+        
+        # 2. Báo cáo bắt đầu
+        # Gửi tin nhắn: (Tên core, 0% tiến độ, thông báo)
+        progress_queue.put((process_name, 0.0, f"Bắt đầu {row['level_name']}..."))
+
+
+
         _args = original_args.clone()
         _args.generate_mode = "basic"
         icons_folder_path = Path(f"{_args.level_set_path}/1_0_original_icons")
@@ -112,26 +123,32 @@ def process_csv_row(row, original_args, styles_dict):
                 _args.max_turns = style_params["max_turns"]
             else:
                 # Dùng 'warn' thay vì print
-                warn(f"[Cảnh báo] Không tìm thấy style '{row['style']}' cho {row['level_name']}")
+                logger.warn(f"[Cảnh báo] Không tìm thấy style '{row['style']}' cho {row['level_name']}")
         
         # 3. Thực thi
         # Dùng 'log' (là logger.info) thay vì print
-        log(f"[PID {os.getpid()}] Đang xử lý: {row['level_name']} (Style: {row['style'] or 'basic'})")
+        logger.info(f"[PID {os.getpid()}] Đang xử lý: {row['level_name']} (Style: {row['style'] or 'basic'})")
         excute_file(_args)
+        # 5. Báo cáo hoàn thành
+        # Gửi tin nhắn: (Tên core, 100% tiến độ, thông báo)
+        progress_queue.put((process_name, 1.0, f"Hoàn thành {row['level_name']}!"))
         
-        # Trả về kết quả
         return (row['Index'], "Thành công", None)
 
     except Exception as e:
-        # Dùng logger.exception() để tự động ghi traceback
-        logger.exception(f"LỖI ở {row['level_name']}: {e}") 
+        logger.exception(f"LỖI ở {row['level_name']}")
+        progress_queue.put((process_name, -1.0, f"LỖI {row['level_name']}!")) # -1 là lỗi
         return (row['Index'], "Thất bại", str(e))
-    # (Tôi đã xóa khối 'except' bị trùng lặp ở đây)
+    
+
+
 def excute_file(args: Args):
 
     resizer = Resizer()
     converter = ImageConverter()
     renderer = Renderer()
+
+    args.level_set_path = Path(args.level_set_path)
 
     logger.info(f"args: {args}")
 
@@ -295,7 +312,7 @@ def excute_sequence_files(args: Args):
                 task_failed = futures[future] 
                 
                 # --- THAY ĐỔI: DÙNG ['key'] THAY VÌ .key ---
-                logger.info(f"LỖI (ngoài worker) ở {task_failed['level_name']}: {e}")
+                logger.error(f"LỖI (ngoài worker) ở {task_failed['level_name']}: {e}")
                 results.append((task_failed['Index'], "Thất bại (executor)", str(e)))
                 # --- KẾT THÚC THAY ĐỔI ---
 
@@ -308,13 +325,123 @@ def excute_sequence_files(args: Args):
             success_count += 1
         else:
             fail_count += 1
-            logger.info(f"[Lỗi] Dòng {index} thất bại: {error_msg}")
+            logger.error(f"[Lỗi] Dòng {index} thất bại: {error_msg}")
     
     logger.info(f"Tổng kết: {success_count} thành công, {fail_count} thất bại.")
     pass
 
 
+def excute_tui_dashboard(args: Args, log_path: Path):
+    """
+    Chạy xử lý hàng loạt file CSV với giao diện Dashboard TUI.
+    """
+    
+    # 1. Lấy Styles (hoặc tải từ file)
+    styles = {
+        "Aztec": { ... },
+        "Basic": { ... },
+        # ... (dict styles của bạn) ...
+    }
+
+    # 2. Lấy Tasks (từ args.csv)
+    try:
+        tasks = [row._asdict() for row in args.csv.itertuples()]
+    except AttributeError:
+        logger.error("Không tìm thấy 'args.csv'. Bạn đã tải file CSV chưa?")
+        return
+
+    total_tasks = len(tasks)
+    logger.info(f"Bắt đầu TUI Dashboard. Xử lý {total_tasks} tác vụ...")
+
+    # 3. Chuẩn bị args cho worker
+    args_for_workers = args.clone()
+    args_for_workers.csv = None 
+
+    # 4. Tạo các đối tượng giao tiếp
+    manager = multiprocessing.Manager()
+    progress_queue = manager.Queue() # Hàng đợi giao tiếp
+    
+    progress_ui = Progress(
+        TextColumn("[bold blue]{task.fields[process_name]}", justify="right"),
+        BarColumn(bar_width=None),
+        "[progress.percentage]{task.percentage:>3.0f}%",
+        TextColumn("{task.description}"),
+        TimeElapsedColumn(),
+        expand=True
+    )
+
+    # 5. Chuẩn bị hàm worker
+    worker_func = partial(process_csv_row, 
+                          original_args=args_for_workers,
+                          styles_dict=styles,
+                          log_path_str=str(log_path),
+                          progress_queue=progress_queue)
+
+    # 6. Chạy Dashboard
+    tasks_submitted = 0
+    tasks_completed = 0
+    core_tasks = {} 
+    
+    # Lấy số core tối đa, ví dụ 8
+    num_workers = os.cpu_count() or 8 
+
+    with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
+        with progress_ui: # Khởi chạy giao diện rich Live
+            
+            # Gửi các task đầu tiên (lấp đầy các core)
+            for i in range(min(num_workers, total_tasks)):
+                executor.submit(worker_func, tasks[i])
+                tasks_submitted += 1
+            
+            # Vòng lặp chính: Chạy cho đến khi hoàn thành
+            while tasks_completed < total_tasks:
+                
+                try:
+                    # Lấy tin nhắn tiến độ
+                    msg = progress_queue.get()
+                    process_name, progress_pct, description = msg
+                except (EOFError, BrokenPipeError):
+                    logger.error("Mất kết nối với hàng đợi (Queue)!")
+                    break # Thoát vòng lặp
+                
+                # Cập nhật hoặc tạo mới thanh tiến trình
+                if process_name not in core_tasks:
+                    core_tasks[process_name] = progress_ui.add_task(
+                        description, total=1.0, process_name=process_name
+                    )
+                
+                task_id = core_tasks[process_name]
+                
+                if progress_pct == -1.0: # Lỗi
+                    progress_ui.update(task_id, description=f"[red]{description}", completed=1.0)
+                else:
+                    progress_ui.update(task_id, description=description, completed=progress_pct)
+
+                # Nếu một core hoàn thành
+                if progress_pct == 1.0 or progress_pct == -1.0:
+                    tasks_completed += 1
+                    
+                    # Gửi task TIẾP THEO cho core vừa rảnh
+                    if tasks_submitted < total_tasks:
+                        executor.submit(worker_func, tasks[tasks_submitted])
+                        tasks_submitted += 1
+
+    logger.info(f"Dashboard hoàn tất. Tổng cộng: {tasks_completed} tác vụ.")
+
+
 if __name__ == "__main__":
+
+    MODE = "TUI_DASHBOARD"
+
+    # 2. Cấu hình Logging (DỰA TRÊN CHẾ ĐỘ)
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_path = Path(f"logs/debug_{timestamp}.log")
+    
+    # Nếu là TUI, bật tui_mode=True (tắt log ra terminal)
+    # Nếu không, tui_mode=False (vẫn log ra terminal)
+    setup_loguru(log_path, tui_mode=(MODE == "TUI_DASHBOARD"))
+    logger.info(f"--- CHẠY Ở CHẾ ĐỘ: {MODE} ---")
+    logger.info(f"--- Log file: {log_path} ---")
 
     args = Args()
     args.level_set_path = ""
@@ -354,10 +481,12 @@ if __name__ == "__main__":
     # convert theo data.csv
     # args.level_set_path = Path("level_set/level_set_4_csv_pictures")
     # args.csv_path = Path("level_set/level_set_4_csv_pictures/[Data] levels - test dataframe.csv")
-    args.level_set_path = Path(__file__).parent / "level_set" / "level_set_5_csv"
-    args.csv_path = Path(__file__).parent / "level_set" / "level_set_5_csv" / "[Data] levels - test dataframe.csv"
+    args.level_set_path = str(Path(__file__).parent / "level_set" / "level_set_5_csv")
+    args.csv_path = str(Path(__file__).parent / "level_set" / "level_set_5_csv" / "[Data] levels - test dataframe.csv")
     args.csv = args.load_csv()
-    excute_sequence_files(args)
+    # Gọi hàm TUI
+    excute_tui_dashboard(args, log_path)
+    # excute_sequence_files(args)
 
     # test combination param để xem cái nào phù hợp nhất
     # args.level_set_path = Path("level_set/level_set_4 test combine param")

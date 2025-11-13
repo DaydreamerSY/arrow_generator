@@ -2,6 +2,7 @@ import os
 import json
 import matplotlib.pyplot as plt
 import random
+from loguru import logger
 
 # ================= CONFIG =================
 # Tên file JSON đã tạo bởi cli_generator.py
@@ -30,7 +31,7 @@ class Renderer:
         # Lấy tên file (không có .json) để làm tiêu đề
         name = os.path.basename(output_path).replace(".png", "")
 
-        print(f"--- Đang render: {name} ({XSize}x{YSize}) ---")
+        logger.info(f"--- Đang render: {name} ({XSize}x{YSize}) ---")
 
         # --- Setup Matplotlib (Giữ nguyên từ file mẫu) ---
         plt.figure(figsize=(XSize / 5, YSize / 5))
@@ -75,12 +76,12 @@ class Renderer:
         # --- Save figure ---
         plt.savefig(output_path, dpi=200, bbox_inches="tight", pad_inches=0.05)
         plt.close()
-        print(f"✅ Đã lưu hình ảnh vào: {output_path}")
+        logger.info(f"✅ Đã lưu hình ảnh vào: {output_path}")
 
     def draw_generated_level(self, input_path, output_path):
         if not os.path.exists(input_path):
-            print(f"Lỗi: Không tìm thấy file input '{input_path}'.")
-            print(f"Hãy chạy 'cli_generator.py ... {input_path} ...' trước.")
+            logger.info(f"Lỗi: Không tìm thấy file input '{input_path}'.")
+            logger.info(f"Hãy chạy 'cli_generator.py ... {input_path} ...' trước.")
 
         try:
             # Mở file JSON kết quả
@@ -91,7 +92,7 @@ class Renderer:
             renderer._draw_generated_level(data, output_path)
             
         except Exception as e:
-            print(f"Đã xảy ra lỗi khi render: {e}")
+            logger.info(f"Đã xảy ra lỗi khi render: {e}")
             import traceback
             traceback.print_exc()
             pass

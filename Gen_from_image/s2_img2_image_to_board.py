@@ -5,6 +5,7 @@
 
 from PIL import Image
 import sys
+from loguru import logger
 
 # --- CONFIG ---
 INPUT_IMAGE_FILE = "1_1_icons/CROWN.png"
@@ -42,15 +43,15 @@ class ImageConverter:
             # Mở ảnh và đảm bảo nó ở chế độ RGBA
             img = Image.open(input_path).convert("RGBA")
         except FileNotFoundError:
-            print(f"Lỗi: Không tìm thấy file ảnh '{input_path}'.")
+            logger.info(f"Lỗi: Không tìm thấy file ảnh '{input_path}'.")
             return
         except Exception as e:
-            print(f"Lỗi khi mở ảnh: {e}")
+            logger.info(f"Lỗi khi mở ảnh: {e}")
             return
 
         width, height = img.size
-        print(f"Đã tải ảnh '{input_path}' (Kích thước: {width}x{height})")
-        print(f"Sử dụng ngưỡng Alpha: {self.alpha_threshold}")
+        logger.info(f"Đã tải ảnh '{input_path}' (Kích thước: {width}x{height})")
+        logger.info(f"Sử dụng ngưỡng Alpha: {self.alpha_threshold}")
 
         pixels = img.load()
         board_lines = []
@@ -75,11 +76,11 @@ class ImageConverter:
         try:
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write("\n".join(board_lines))
-            print(f"Hoàn thành! Đã lưu board vào '{output_path}'.")
+            logger.info(f"Hoàn thành! Đã lưu board vào '{output_path}'.")
             return output_path
             
         except Exception as e:
-            print(f"Lỗi khi ghi file: {e}")
+            logger.info(f"Lỗi khi ghi file: {e}")
 
 # --- Hàm chạy chính ---
 if __name__ == "__main__":

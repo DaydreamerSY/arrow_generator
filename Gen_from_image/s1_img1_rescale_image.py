@@ -1,6 +1,7 @@
 # File: scale_down.py (Đã cấu trúc lại thành hàm)
 import os
 from PIL import Image
+from loguru import logger
 
 class Resizer:
 
@@ -31,7 +32,7 @@ class Resizer:
             output_path = os.path.join(output_folder, file_name)
 
             with Image.open(input_path) as img:
-                print(f"Đang xử lý: '{input_path}' (Kích thước gốc: {img.size})")
+                logger.info(f"Đang xử lý: '{input_path}' (Kích thước gốc: {img.size})")
                 
                 # 3. Thay đổi kích thước (Đảm bảo là số nguyên)
                 int_size = (int(new_size[0]), int(new_size[1]))
@@ -42,13 +43,13 @@ class Resizer:
                 
                 # 4. Lưu file (PIL.Image.save() tự động ghi đè)
                 resized_img.save(output_path)
-                print(f"==> Đã lưu vào: '{output_path}' (Kích thước mới: {int_size})")
+                logger.info(f"==> Đã lưu vào: '{output_path}' (Kích thước mới: {int_size})")
                 return output_path
 
         except FileNotFoundError:
-            print(f"Lỗi: Không tìm thấy file '{input_path}'")
+            logger.info(f"Lỗi: Không tìm thấy file '{input_path}'")
         except Exception as e:
-            print(f"Đã xảy ra lỗi khi xử lý {input_path}: {e}")
+            logger.info(f"Đã xảy ra lỗi khi xử lý {input_path}: {e}")
 
 # --- CÁCH SỬ DỤNG (VÍ DỤ) ---
 # Bạn có thể chạy file này trực tiếp để test
@@ -64,7 +65,7 @@ if __name__ == "__main__":
     # TARGET_SIZE_2 = (100, 100) # Cắt ảnh 2 thành 100x100
     # ------------------------
     
-    print("--- Bắt đầu xử lý ---")
+    logger.info("--- Bắt đầu xử lý ---")
 
     resizer = Resizer()
     
@@ -82,4 +83,4 @@ if __name__ == "__main__":
     #     output_folder=OUTPUT_DIR
     # )
     
-    print("--- Hoàn tất ---")
+    logger.info("--- Hoàn tất ---")

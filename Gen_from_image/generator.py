@@ -7,6 +7,7 @@ import random
 import progressbar
 
 from rich.progress import track
+from loguru import logger
 
 # --- DATA STRUCTURES (Phụ thuộc) ---
 class Arrow:
@@ -92,7 +93,7 @@ class HybridLevelGeneratorTestable:
         
         Trả về: (list_of_new_arrows, last_arrow_id, status_message)
         """
-        print("Generating level in painted area... (This will be slow)")
+        logger.info("Generating level in painted area... (This will be slow)")
         
         if not active_layer:
             return [], start_arrow_id, "No active layer selected."
@@ -138,7 +139,7 @@ class HybridLevelGeneratorTestable:
         self.progress_bar.start()
         for i in range(num_to_gen):
             self.progress_bar.update(i + 1)
-            # print(f"Trying to generate arrow {i+1}/{num_to_gen}...")
+            # logger.info(f"Trying to generate arrow {i+1}/{num_to_gen}...")
             found_arrow = False
             for retry in range(max_retries_per_arrow):
                 p2_candidates = []
@@ -190,7 +191,7 @@ class HybridLevelGeneratorTestable:
             
             if not found_arrow:
                 status_msg = f"Could not find valid arrow {i+1}. Stopping."
-                print(status_msg)
+                logger.info(status_msg)
                 # Phải dừng và trả về kết quả hiện tại
                 break # Thoát khỏi vòng lặp 'num_to_gen'
 
@@ -204,7 +205,7 @@ class HybridLevelGeneratorTestable:
             final_arrows_to_add.append(real_arrow)
         
         status_msg = f"Successfully generated {len(final_arrows_to_add)} arrows!"
-        print(status_msg)
+        logger.info(status_msg)
         
         return final_arrows_to_add, arrow_id_counter, status_msg
     
@@ -432,7 +433,7 @@ class HybridLevelGeneratorTestable:
         
         Trả về: (list_of_new_arrows, last_arrow_id, status_message)
         """
-        print("Generating ADVANCED level in painted area... (This will be slow)")
+        logger.info("Generating ADVANCED level in painted area... (This will be slow)")
         
         if not active_layer:
             return [], start_arrow_id, "No active layer selected."
@@ -474,7 +475,7 @@ class HybridLevelGeneratorTestable:
 
         # for i in range(num_to_gen):
         for i in track(range(num_to_gen), description=f"Try to generate (adv) arrow ..."):
-            # print(f"Trying to generate (adv) arrow {i+1}/{num_to_gen}...")
+            # logger.info(f"Trying to generate (adv) arrow {i+1}/{num_to_gen}...")
             found_arrow = False
             for retry in range(max_retries_per_arrow):
                 p2_candidates = []
@@ -537,7 +538,7 @@ class HybridLevelGeneratorTestable:
             
             if not found_arrow:
                 status_msg = f"Could not find valid arrow {i+1}. Stopping."
-                print(status_msg)
+                logger.info(status_msg)
                 break 
 
         if not newly_generated_arrows:
@@ -550,6 +551,6 @@ class HybridLevelGeneratorTestable:
             final_arrows_to_add.append(real_arrow)
         
         status_msg = f"Successfully generated {len(final_arrows_to_add)} arrows!"
-        print(status_msg)
+        logger.info(status_msg)
         
         return final_arrows_to_add, arrow_id_counter, status_msg

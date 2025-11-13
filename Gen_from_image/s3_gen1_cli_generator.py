@@ -5,8 +5,7 @@ import json
 import sys
 import argparse
 from collections import defaultdict
-
-from types import SimpleNamespace
+from loguru import logger
 
 # Import logic đã trích xuất
 from validator import Validator, Arrow
@@ -29,7 +28,7 @@ class ClientGenerator:
 
     def load_board_from_file(self, filepath):
         """Đọc file .txt và chuyển nó thành một set các tọa độ (x, y)."""
-        print(f"--- Đang tải board từ: {filepath} ---")
+        logger.info(f"--- Đang tải board từ: {filepath} ---")
         editable_area = set()
         try:
             with open(filepath, 'r') as f:
@@ -40,17 +39,17 @@ class ClientGenerator:
                             editable_area.add((x, y))
             
             if not editable_area:
-                print("Lỗi: Không tìm thấy ô nào được vẽ ('1' hoặc 'X') trong file input.")
+                logger.info("Lỗi: Không tìm thấy ô nào được vẽ ('1' hoặc 'X') trong file input.")
                 return None
                 
-            print(f"Đã tải thành công {len(editable_area)} ô 'editable'.")
+            logger.info(f"Đã tải thành công {len(editable_area)} ô 'editable'.")
             return editable_area
             
         except FileNotFoundError:
-            print(f"Lỗi: Không tìm thấy file input '{filepath}'.")
+            logger.info(f"Lỗi: Không tìm thấy file input '{filepath}'.")
             return None
         except Exception as e:
-            print(f"Lỗi khi đọc file: {e}")
+            logger.info(f"Lỗi khi đọc file: {e}")
             return None
 
     def suggest_arrow_count(self, total_cells, avg_length):
@@ -64,10 +63,10 @@ class ClientGenerator:
 
     def save_arrows_to_json(self, all_arrows, filename, args):
         """Lưu danh sách các mũi tên ra file JSON chuẩn của game."""
-        print(f"--- Đang lưu kết quả ra: {filename} ---")
+        logger.info(f"--- Đang lưu kết quả ra: {filename} ---")
         all_arrow_points = {p for arr in all_arrows for p in arr.points}
         if not all_arrow_points:
-            print("Không có mũi tên nào được tạo để lưu.")
+            logger.info("Không có mũi tên nào được tạo để lưu.")
             return
 
         min_x = min(p[0] for p in all_arrow_points)
@@ -106,9 +105,9 @@ class ClientGenerator:
         try:
             with open(filename, 'w') as f:
                 json.dump(output_data, f, separators=(',', ':'))
-            print(f"Đã lưu thành công level {new_x_size}x{new_y_size} với {len(all_arrows)} mũi tên.")
+            logger.info(f"Đã lưu thành công level {new_x_size}x{new_y_size} với {len(all_arrows)} mũi tên.")
         except Exception as e:
-            print(f"Lỗi khi lưu file JSON: {e}")
+            logger.info(f"Lỗi khi lưu file JSON: {e}")
 
     def _get_unicode_body_char(self, p_prev, p_curr, p_next):
         """
@@ -151,14 +150,14 @@ class ClientGenerator:
 
     def visualize_in_console(self, arrows, editable_area):
         """(Tùy chọn) In một bản đồ ASCII của kết quả ra console."""
-        print("--- Bản đồ kết quả (Unicode) ---")
+        logger.info("--- Bản đồ kết quả (Unicode) ---")
         points_map = defaultdict(lambda: ' ')
         
         # 1. Tính toán ranh giới
         all_points_for_bounds = set(editable_area)
         for arr in arrows: all_points_for_bounds.update(arr.points)
         if not all_points_for_bounds:
-            print("(Trống)"); return
+            logger.info("(Trống)"); return
             
         min_x = min(p[0] for p in all_points_for_bounds) - 1
         max_x = max(p[0] for p in all_points_for_bounds) + 1
@@ -225,7 +224,7 @@ class ClientGenerator:
             line = ""
             for x in range(min_x, max_x + 1): 
                 line += points_map[(x,y)]
-            print(line)
+            logger.info(line)
 
     def excute(self):
         # args = FakeParser({
@@ -244,7 +243,7 @@ class ClientGenerator:
             sys.exit(1)
         
         total_editable_cells = len(editable_area)
-        print(f"Tổng số ô có thể vẽ: {total_editable_cells}")
+        logger.info(f"Tổng số ô có thể vẽ: {total_editable_cells}")
 
         # 2. Khởi tạo trạng thái cho vòng lặp
         all_generated_arrows = [] 
@@ -259,24 +258,24 @@ class ClientGenerator:
         # 3. Bắt đầu vòng lặp generator
         # Vòng lặp sẽ tiếp tục miễn là length >= min_length
         while current_length >= self.args.min_length:
-            print("\n" + "="*40)
-            print(f"--- BẮT ĐẦU VÒNG LẶP (Length = {current_length}) ---")
+            # logger.info("\n" + "="*40)
+            logger.info(f"--- BẮT ĐẦU VÒNG LẶP (Length = {current_length}) ---")
             
             # 3a. Tính toán các ô còn trống
             occupied_cells = {p for arr in all_generated_arrows for p in arr.points}
             available_cells = editable_area.difference(occupied_cells)
             num_available_cells = len(available_cells)
 
-            print(f"Ô đã chiếm: {len(occupied_cells)} / Ô còn trống: {num_available_cells}")
+            logger.info(f"Ô đã chiếm: {len(occupied_cells)} / Ô còn trống: {num_available_cells}")
             
             # 3b. Kiểm tra điều kiện dừng (nếu không còn ô trống)
             if num_available_cells == 0:
-                print("Toàn bộ board đã được lấp đầy. Dừng generator.")
+                logger.info("Toàn bộ board đã được lấp đầy. Dừng generator.")
                 break # Thoát khỏi vòng lặp while
 
             # 3c. Đề xuất số lượng mũi tên cho vòng này
             num_to_gen = self.suggest_arrow_count(num_available_cells, current_length)
-            print(f"Đề xuất tạo {num_to_gen} mũi tên cho vòng lặp này...")
+            logger.info(f"Đề xuất tạo {num_to_gen} mũi tên cho vòng lặp này...")
             
             # 3d. Tạo MockLayer
             mock_layer = MockLayer(0, mock_color, editable_area)
@@ -312,7 +311,7 @@ class ClientGenerator:
                     max_turns=self.args.max_turns
                 )
             
-            print(f"Kết quả vòng lặp: {status_msg}")
+            logger.info(f"Kết quả vòng lặp: {status_msg}")
 
             # === MODIFICATION START: Logic lặp lại tại min_length ===
             
@@ -324,53 +323,53 @@ class ClientGenerator:
                 # 3g. Quyết định độ dài tiếp theo
                 # CHỈ giảm độ dài nếu chúng ta CHƯA ở mức tối thiểu
                 if current_length > self.args.min_length:
-                    print(f"Giảm độ dài từ {current_length}...")
+                    logger.info(f"Giảm độ dài từ {current_length}...")
                     current_length -= self.args.length_step
                     # Đảm bảo không bị "hụt" (overshoot)
                     if current_length < self.args.min_length:
                         current_length = self.args.min_length
-                    print(f"Độ dài vòng tiếp theo: {current_length}")
+                    logger.info(f"Độ dài vòng tiếp theo: {current_length}")
                 else:
                     # Nếu current_length == min_length,
                     # KHÔNG LÀM GÌ CẢ. Vòng lặp while sẽ tự động 
                     # chạy lại với CÙNG một min_length.
-                    print(f"Tiếp tục lặp lại ở độ dài tối thiểu ({current_length})...")
+                    logger.info(f"Tiếp tục lặp lại ở độ dài tối thiểu ({current_length})...")
                     
             else:
                 # 3f. Không tìm thấy mũi tên nào
-                print("Không thể tạo thêm mũi tên ở độ dài này.")
+                logger.info("Không thể tạo thêm mũi tên ở độ dài này.")
                 
                 # 3g. Quyết định độ dài tiếp theo
                 # Nếu chúng ta đã ở mức tối thiểu VÀ không thể tạo thêm,
                 # thì đã đến lúc DỪNG HẲN.
                 if current_length == self.args.min_length:
-                    print("Đã đạt độ dài tối thiểu và không thể tạo thêm. Dừng.")
+                    logger.info("Đã đạt độ dài tối thiểu và không thể tạo thêm. Dừng.")
                     break # Thoát khỏi vòng lặp while
                 else:
                     # Nếu chưa ở mức tối thiểu, cứ giảm độ dài
-                    print(f"Giảm độ dài từ {current_length}...")
+                    logger.info(f"Giảm độ dài từ {current_length}...")
                     current_length -= self.args.length_step
                     if current_length < self.args.min_length:
                         current_length = self.args.min_length
-                    print(f"Độ dài vòng tiếp theo: {current_length}")
+                    logger.info(f"Độ dài vòng tiếp theo: {current_length}")
 
             # === MODIFICATION END ===
         
         # 4. Kết thúc vòng lặp
-        print("\n" + "="*40)
-        print("--- ĐÃ HOÀN TẤT TẤT CẢ CÁC VÒNG LẶP ---")
-        print(f"Tổng cộng đã tạo: {len(all_generated_arrows)} mũi tên.")
+        # logger.info("\n" + "="*40)
+        logger.info("--- ĐÃ HOÀN TẤT TẤT CẢ CÁC VÒNG LẶP ---")
+        logger.info(f"Tổng cộng đã tạo: {len(all_generated_arrows)} mũi tên.")
         
         occupied_cells = {p for arr in all_generated_arrows for p in arr.points}
         fill_percent = (len(occupied_cells) / total_editable_cells) * 100
-        print(f"Đã lấp đầy {len(occupied_cells)} / {total_editable_cells} ô ({fill_percent:.1f}%)")
+        logger.info(f"Đã lấp đầy {len(occupied_cells)} / {total_editable_cells} ô ({fill_percent:.1f}%)")
 
         # 5. Lưu và hiển thị kết quả (chỉ một lần)
         if all_generated_arrows:
             self.save_arrows_to_json(all_generated_arrows, self.args.output_file, self.args)
             self.visualize_in_console(all_generated_arrows, editable_area)
         else:
-            print("Không có mũi tên nào được tạo.")
+            logger.info("Không có mũi tên nào được tạo.")
 
 if __name__ == "__main__":
 

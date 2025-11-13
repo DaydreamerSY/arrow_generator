@@ -1,6 +1,7 @@
 import pandas as pd
 from types import SimpleNamespace
 from pathlib import Path
+from loguru import logger
 
 
 class Args(SimpleNamespace):
@@ -47,7 +48,7 @@ class Args(SimpleNamespace):
 def rename_json_files(folder_path: str):
     folder = Path(folder_path)
     if not folder.is_dir():
-        print(f"Error: {folder} is not a valid directory.")
+        logger.info(f"Error: {folder} is not a valid directory.")
         return
 
     for file in folder.glob("*.json"):
@@ -55,7 +56,7 @@ def rename_json_files(folder_path: str):
             # Extract the number part (e.g. "1" from "1.json")
             stem = file.stem
             if not stem.isdigit():
-                print(f"Skipping non-numeric file: {file.name}")
+                logger.info(f"Skipping non-numeric file: {file.name}")
                 continue
 
             new_name = f"{int(stem):04d}.json"  # pad with zeros to 4 digits
@@ -64,9 +65,9 @@ def rename_json_files(folder_path: str):
             # Only rename if name changes
             if file.name != new_name:
                 file.rename(new_path)
-                print(f"Renamed: {file.name} -> {new_name}")
+                logger.info(f"Renamed: {file.name} -> {new_name}")
         except Exception as e:
-            print(f"Error renaming {file.name}: {e}")
+            logger.info(f"Error renaming {file.name}: {e}")
 
 
 import random
@@ -138,18 +139,18 @@ if __name__ == "__main__":
 
     # ======= In thống kê =======
     def print_report(report, title):
-        print(f"\n===== {title} =====")
+        logger.info(f"\n===== {title} =====")
         if not report:
-            print("Không có bộ nào bị lặp lại.")
+            logger.info("Không có bộ nào bị lặp lại.")
             return
         for r in sorted(report, key=lambda x: x["min_distance"] or 999):
-            print(f"{r['pattern']} -> lặp {r['count']} lần, khoảng cách nhỏ nhất {r['min_distance']}, vị trí {r['positions']}")
+            logger.info(f"{r['pattern']} -> lặp {r['count']} lần, khoảng cách nhỏ nhất {r['min_distance']}, vị trí {r['positions']}")
 
     print_report(report_2, "BỘ 2 LẶP LẠI")
     print_report(report_3, "BỘ 3 LẶP LẠI")
 
     # ======= Kiểm tra nhanh output =======
-    print("\n--- Một phần sequence ---")
+    logger.info("\n--- Một phần sequence ---")
     for i in result:
-        print(i)
+        logger.info(i)
 

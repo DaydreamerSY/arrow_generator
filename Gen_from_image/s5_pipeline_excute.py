@@ -7,124 +7,133 @@ from helper import Args
 from pathlib import Path
 from itertools import product
 
-import os
+import sys, os, datetime
 import pandas as pd
 import numpy as np
 
-import sys
-import datetime
-import inspect
+import concurrent.futures
+from functools import partial
+from rich.progress import track
+from loguru import logger
+log = logger.info
+err = logger.error
+warn = logger.warning
+dbg = logger.debug
 
-# === GHI LOG RA FILE ===
-timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-log_path = Path(f"logs/debug_{timestamp}.log")
-log_path.parent.mkdir(parents=True, exist_ok=True)
-log_file = open(log_path, "a", encoding="utf-8")
+# === KHỐI LOGGING MỚI (AN TOÀN CHO ĐA XỬ LÝ) ===
 
-# Ghi đồng thời cả ra terminal và file
-
-
-class Logger(object):
-    def __init__(self, file):
-        self.terminal = sys.stdout
-        self.log = file
-        self.at_start_of_line = True
+def setup_logging():
+    """
+    Hàm này cấu hình loguru. 
+    Nó sẽ được gọi bởi cả tiến trình chính và con.
+    """
+    
+    # 1. Kiểm tra biến môi trường
+    log_path_str = os.environ.get("MY_APP_LOG_PATH")
+    
+    if not log_path_str:
+        # ---- Đây là TIẾN TRÌNH CHÍNH (chạy lần đầu) ----
+        # 1a. Tạo timestamp và path MỘT LẦN
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        log_path = Path(f"logs/debug_{timestamp}.log")
         
-        try:
-            self.logger_filename = os.path.abspath(__file__)
-        except NameError:
-            self.logger_filename = os.path.abspath(inspect.currentframe().f_code.co_filename)
+        # 1b. SET BIẾN MÔI TRƯỜNG CHO CÁC TIẾN TRÌNH CON
+        os.environ["MY_APP_LOG_PATH"] = str(log_path)
+    else:
+        # ---- Đây là TIẾN TRÌNH CON (đã được set env var) ----
+        # 2. Chỉ cần đọc lại đường dẫn đã được tạo
+        log_path = Path(log_path_str)
         
-        try:
-            self.cwd = os.getcwd()
-        except OSError:
-            self.cwd = None
+    log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    def _get_caller_info(self):
-        """
-        Hàm trợ giúp: Đi ngược call stack để tìm file đã gọi print.
-        Trả về: (full_path, line_number)
-        """
-        try:
-            stack = inspect.stack()
+    # 3. Cấu hình logger
+    logger.remove() # Xóa handler mặc định
+    
+    # Sink 1: Terminal (dễ đọc)
+    logger.add(sys.stderr, level="INFO", format="<level>{message}</level>")
+    
+    # Sink 2: File (an toàn, đầy đủ)
+    logger.add(
+        log_path, 
+        level="DEBUG",
+        rotation="10 MB",
+        enqueue=True,     # <-- CHÌA KHÓA cho đa xử lý
+        format="{time:HH:mm:ss.SSS} | {level:<8} | {process.name} | {name}:{function}:{line} - {message}"
+    )
+    return log_path # Trả về path đã dùng
+
+# 4. GỌI HÀM SETUP NGAY LẬP TỨC (Ở GLOBAL SCOPE)
+# Tiến trình chính sẽ chạy, không thấy env var, tự tạo path và set env var.
+# Tiến trình con sẽ chạy, *thấy* env var, và dùng path đó.
+log_path = setup_logging()
+
+# 7. In dòng log đầu tiên (sẽ chạy ở cả main và các core)
+# Giờ đây tất cả sẽ in ra CÙNG MỘT TÊN FILE
+logger.info(f"Logger đã được patch. Bắt đầu ghi log vào {log_path}")
+
+# === KẾT THÚC KHỐI LOGGING ===
+
+
+# --- ĐÂY LÀ HÀM MỚI (WORKER) ---
+# (Hàm này phải nằm ở top-level, bên ngoài hàm excute_sequence_files)
+
+def process_csv_row(row, original_args, styles_dict):
+    """
+    Hàm này xử lý MỘT dòng CSV. Nó sẽ được chạy song song.
+    'row' bây giờ là một DICT.
+    """
+    try:
+        # 1. Sao chép args và thiết lập thông số
+        _args = original_args.clone()
+        _args.generate_mode = "basic"
+        icons_folder_path = Path(f"{_args.level_set_path}/1_0_original_icons")
+
+        _args.item_name = row['template_name']
+        _args.template_name = row['template_name']
+        _args.level_id = row['level_name']
+        _args.alter_item_name = f"{int(row['level_name']):04d}"
+        _args.item_path = os.path.join(icons_folder_path, _args.item_name)
+        
+        _args.start_length = row['start_length']
+        _args.length_step = row['length_step']
+        _args.min_length = row['min_length']
+        _args.size = (row['size_x'], row['size_y'])
+
+        # 2. Áp dụng style (nếu có)
+        if row['style'] != "":
+            _args.generate_mode = "advance"
+            style_params = styles_dict.get(row['style']) 
             
-            for frame_info in stack[2:]:
-                filename = os.path.abspath(frame_info.filename)
-                
-                # if filename == self.logger_filename:
-                #     continue
-                
-                basename = os.path.basename(filename)
-                if basename in ['io.py', 'code.py', 'runpy.py']:
-                    continue
-                
-                return (filename, frame_info.lineno)
-                
-        except Exception:
-            pass 
-        
-        return (None, 0) # Fallback
-
-    def write(self, message):
-        if not message:
-            return
-
-        if self.at_start_of_line and message.strip():
-            full_path, line_no = self._get_caller_info()
-            
-            if full_path:
-                # --- BẮT ĐẦU THAY ĐỔI ---
-                
-                # 1. Tạo đường dẫn cho Log (Tuyệt đối)
-                log_prefix = f"[{full_path}:{line_no}] " 
-                
-                # 2. Tạo đường dẫn cho Terminal (Tương đối)
-                display_path = full_path
-                if self.cwd:
-                    try:
-                        rel_path = os.path.relpath(full_path, self.cwd)
-                        display_path = rel_path
-                    except ValueError:
-                        pass # Giữ full_path nếu ở ổ đĩa khác
-                
-                terminal_prefix = f"[{display_path}:{line_no}] "
-                
-                # 3. Viết prefix riêng cho từng nơi
-                self.terminal.write(terminal_prefix)
-                self.log.write(log_prefix)
-                
-                # --- KẾT THÚC THAY ĐỔI ---
+            if style_params:
+                _args.left_weight = style_params["left_weight"]
+                _args.right_weight = style_params["right_weight"]
+                _args.straight_weight = style_params["straight_weight"]
+                _args.turn_probability = style_params["turn_probability"]
+                _args.max_turns = style_params["max_turns"]
             else:
-                prefix = f"[unknown:0] "
-                self.terminal.write(prefix)
-                self.log.write(prefix)
-            
-            self.at_start_of_line = False
+                # Dùng 'warn' thay vì print
+                warn(f"[Cảnh báo] Không tìm thấy style '{row['style']}' cho {row['level_name']}")
+        
+        # 3. Thực thi
+        # Dùng 'log' (là logger.info) thay vì print
+        log(f"[PID {os.getpid()}] Đang xử lý: {row['level_name']} (Style: {row['style'] or 'basic'})")
+        excute_file(_args)
+        
+        # Trả về kết quả
+        return (row['Index'], "Thành công", None)
 
-        # Viết message gốc cho cả hai
-        self.terminal.write(message)
-        self.log.write(message)
-
-        if message.endswith('\n'):
-            self.at_start_of_line = True
-
-    def flush(self):
-        self.terminal.flush()
-        self.log.flush()
-# Gán lại stdout
-sys.stdout = Logger(log_file)
-sys.stderr = Logger(log_file)
-
-print(f"[LOGGING] Bắt đầu ghi log vào {log_file.name}\n")
-
-
+    except Exception as e:
+        # Dùng logger.exception() để tự động ghi traceback
+        logger.exception(f"LỖI ở {row['level_name']}: {e}") 
+        return (row['Index'], "Thất bại", str(e))
+    # (Tôi đã xóa khối 'except' bị trùng lặp ở đây)
 def excute_file(args: Args):
 
     resizer = Resizer()
     converter = ImageConverter()
     renderer = Renderer()
 
-    print(f"args: {args}")
+    logger.info(f"args: {args}")
 
     if hasattr(args, "alter_item_name"):
         item_name = args.alter_item_name
@@ -142,7 +151,7 @@ def excute_file(args: Args):
         output_path=args.level_set_path / "1_board_test" / item_name.replace('.png', '.txt')
     )
 
-    _generated_json_path = args.level_set_path / "2_result_test" / f"{item_name.replace('.png', '')}"
+    _generated_json_path = args.level_set_path / "2_result_test" / f"{item_name.replace('.png', '')}.json"
     _rendered_png_path = args.level_set_path / "3_render" / f"{item_name.replace('.png', '')}.png"
 
     args.input_file = _board_test_path
@@ -166,7 +175,7 @@ def excute_folder(args: Args):
             continue
         item_path = os.path.join(icons_folder_path, item_name)
         if os.path.isfile(item_path):  # Check if it's a file, not a subdirectory
-            print(item_path)
+            logger.info(item_path)
             args.item_name = item_name
             args.item_path = item_path
             excute_file(args)
@@ -239,48 +248,69 @@ def excute_sequence_files(args: Args):
 
 
 
-    # print(args.csv)
-    for row in args.csv.itertuples():
-        # print(row.Index, row.template_name, row.size_x)
+    # logger.info(args.csv)
+    # 1. Chuẩn bị danh sách các tác vụ
+    tasks = [row._asdict() for row in args.csv.itertuples()]
+    max_workers = None 
+    
+    logger.info(f"--- Bắt đầu xử lý {len(tasks)} file song song trên (tối đa) {os.cpu_count()} core ---")
 
-        _args = args.clone()
+    # --- BẮT ĐẦU SỬA LỖI ---
+    
+    # 2. Tạo một bản sao 'args' SẠCH (không chứa DataFrame)
+    # Hàm worker không cần toàn bộ file CSV, chỉ cần các settings khác
+    args_for_workers = args.clone()
+    args_for_workers.csv = None # <-- ĐÂY LÀ SỬA LỖI
+    
+    # 3. Tạo hàm "partial" với bản sao 'args' đã làm sạch
+    worker_func = partial(process_csv_row, 
+                          original_args=args_for_workers, # <-- Dùng bản sao sạch
+                          styles_dict=styles)
+    
+    # --- KẾT THÚC SỬA LỖI ---
 
-        _args.generate_mode = "basic"
+    # 3. Chạy pool (ĐÂY LÀ PHẦN THAY ĐỔI)
+    results = [] # Nơi lưu trữ kết quả
+    
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+        
+        # A. Gửi tất cả các tác vụ vào pool
+        # executor.submit() sẽ gửi 1 task và trả về 1 đối tượng 'Future'
+        # 'Future' giống như một tờ giấy hẹn
+        futures = {executor.submit(worker_func, task): task for task in tasks}
 
-        icons_folder_path = Path(f"{_args.level_set_path}/1_0_original_icons")
+        # B. Dùng 'track' để theo dõi các 'Future' khi chúng hoàn thành
+        # as_completed(futures) sẽ đợi và trả về 'Future' ngay khi nó
+        # được một core xử lý xong (không theo thứ tự)
+        for future in track(concurrent.futures.as_completed(futures), 
+                            description="[green]Đang xử lý...", 
+                            total=len(tasks)):
+            
+            try:
+                # Lấy kết quả từ 'Future'
+                result = future.result()
+                results.append(result)
+            except Exception as e:
+                # 'task_failed' bây giờ là một dict
+                task_failed = futures[future] 
+                
+                # --- THAY ĐỔI: DÙNG ['key'] THAY VÌ .key ---
+                logger.info(f"LỖI (ngoài worker) ở {task_failed['level_name']}: {e}")
+                results.append((task_failed['Index'], "Thất bại (executor)", str(e)))
+                # --- KẾT THÚC THAY ĐỔI ---
 
-        _args.item_name = row.template_name
-        _args.template_name = row.template_name
-        _args.level_id = row.level_name
-
-        _args.alter_item_name = f"{int(row.level_name):04d}"
-        print(f"alter name ------ {_args.alter_item_name}")
-        _args.item_path = os.path.join(icons_folder_path, _args.item_name)
-
-        _args.start_length = row.start_length
-        _args.length_step = row.length_step
-        _args.min_length = row.min_length
-        _args.size = (row.size_x, row.size_y)
-
-
-        print(f"row style {row.style}")
-        print(f"row style != '' ? {row.style != ''}")
-
-        if row.style != "":
-            _args.generate_mode = "advance"
-
-            _args.left_weight = styles[row.style]["left_weight"]
-            _args.right_weight = styles[row.style]["right_weight"]
-            _args.straight_weight = styles[row.style]["straight_weight"]
-            _args.turn_probability = styles[row.style]["turn_probability"]
-            _args.max_turns = styles[row.style]["max_turns"]
-
-            # print(_args)
-
-        icons_folder_path = Path(f"{_args.level_set_path}/1_0_original_icons")
-        item_path = os.path.join(icons_folder_path, _args.alter_item_name)
-        args.item_path = item_path
-        excute_file(_args)
+    # 5. (Tùy chọn) Xử lý kết quả
+    logger.info("--- Xử lý hoàn tất ---")
+    success_count = 0
+    fail_count = 0
+    for (index, status, error_msg) in results:
+        if status == "Thành công":
+            success_count += 1
+        else:
+            fail_count += 1
+            logger.info(f"[Lỗi] Dòng {index} thất bại: {error_msg}")
+    
+    logger.info(f"Tổng kết: {success_count} thành công, {fail_count} thất bại.")
     pass
 
 

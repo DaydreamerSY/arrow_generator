@@ -98,7 +98,13 @@ def process_csv_row(row, original_args, styles_dict, log_path_str, progress_queu
         # Gửi tin nhắn: (Tên core, 0% tiến độ, thông báo)
         progress_queue.put((process_name, 0.0, f"Bắt đầu {row['level_name']}..."))
 
-
+        # 1. Định nghĩa callback cho TUI
+        def tui_callback(step, total, msg):
+            if total > 0:
+                percent = step / total
+                progress_queue.put((process_name, percent, f"({row['level_name']}) {msg}"))
+            elif step == -1: # Mã lỗi
+                progress_queue.put((process_name, -1.0, f"LỖI {row['level_name']}!"))
 
         _args = original_args.clone()
         _args.generate_mode = "basic"
@@ -131,7 +137,7 @@ def process_csv_row(row, original_args, styles_dict, log_path_str, progress_queu
         
         # 3. Thực thi
         logger.info(f"[PID {os.getpid()}] Đang xử lý: {row['level_name']} (Style: {row['style'] or 'basic'})")
-        excute_file(_args)
+        excute_file(_args, progress_callback=tui_callback)
         # 5. Báo cáo hoàn thành
         # Gửi tin nhắn: (Tên core, 100% tiến độ, thông báo)
         progress_queue.put((process_name, 1.0, f"Hoàn thành {row['level_name']}!"))
@@ -145,7 +151,11 @@ def process_csv_row(row, original_args, styles_dict, log_path_str, progress_queu
     
 
 
-def excute_file(args: Args):
+def excute_file(args: Args, progress_callback=None):
+
+    def _report(step, total, msg):
+        if progress_callback:
+            progress_callback(step, total, msg)
 
     resizer = Resizer()
     converter = ImageConverter()
@@ -155,31 +165,50 @@ def excute_file(args: Args):
 
     logger.info(f"args: {args}")
 
+    item_name = ""
+
     if hasattr(args, "alter_item_name"):
         item_name = args.alter_item_name
     else:
         item_name = args.item_name
 
+    _report(1, 10, f"Resizing {item_name}...")
     _img_resized_path = resizer.resize_image(
         input_path=args.item_path,
         new_size=args.size,
         output_folder=args.level_set_path / "1_1_icons"
     )
 
+    _report(2, 10, f"Converting {item_name}...")
     _board_test_path = converter.convert_image_to_board(
         input_path=_img_resized_path,
         output_path=args.level_set_path / "1_board_test" / item_name.replace('.png', '.txt')
     )
 
+    _report(3, 10, f"Generating {item_name}...")
     _generated_json_path = args.level_set_path / "2_result_test" / f"{item_name.replace('.png', '')}.json"
     _rendered_png_path = args.level_set_path / "3_render" / f"{item_name.replace('.png', '')}.png"
 
     args.input_file = _board_test_path
     args.output_file = _generated_json_path
 
-    client_generator = ClientGenerator(args)
-    client_generator.excute()
+    # Tạo một "callback lồng" (nested callback)
+    # để chuyển tiến độ của Generator (0-100%)
+    # thành tiến độ của bước 3 (từ 75% -> 85%)
+    def generator_callback(step, total, msg):
+        # Tính toán tiến độ tổng thể
+        # (Bước 3 chiếm từ 75% đến 95% của tổng thể) -> chiếm từ 40% đến 90%
+        # 75% (đã xong 3/4) + (tiến độ của generator * 20%) -> 3/10 đã xong + (tiến độ generator) * 60%
+        overall_progress = (3/10) + (step / total) * 0.60 
+        
+        if progress_callback:
+            # Báo cáo tiến độ tổng thể (ví dụ: 0.80 = 80%)
+            progress_callback(overall_progress * 100, 100, msg)
 
+    client_generator = ClientGenerator(args)
+    client_generator.excute(progress_callback=generator_callback)
+
+    _report(10, 10, f"Rendering {item_name}...")
     renderer.draw_generated_level(
         input_path=_generated_json_path,
         output_path=_rendered_png_path
@@ -271,7 +300,7 @@ def excute_sequence_files(args: Args):
     # logger.info(args.csv)
     # 1. Chuẩn bị danh sách các tác vụ
     tasks = [row._asdict() for row in args.csv.itertuples()]
-    max_workers = None 
+    max_workers = 8 
     
     logger.info(f"--- Bắt đầu xử lý {len(tasks)} file song song trên (tối đa) {os.cpu_count()} core ---")
 
@@ -425,11 +454,21 @@ def excute_tui_dashboard(args: Args, log_path: Path):
     tasks_completed = 0
     core_tasks = {} 
     
-    # Lấy số core tối đa, ví dụ 8
-    num_workers = os.cpu_count() or 8 
+    # Lấy số core tối đa, ví dụ 8 -> default 8 adjust to 4 on low-end pc or want stable core 
+    # num_workers = os.cpu_count() or 8 
+    num_workers = 6
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
         with progress_ui: # Khởi chạy giao diện rich Live
+
+            # --- BẮT ĐẦU THAY ĐỔI ---
+            # Thêm một thanh tiến trình "TỔNG"
+            total_progress_bar = progress_ui.add_task(
+                "[bold bright_green]Tổng tiến độ", 
+                total=total_tasks, 
+                process_name="OVERALL" # Tên nội bộ
+            )
+            # --- KẾT THÚC THAY ĐỔI ---
             
             # Gửi các task đầu tiên (lấp đầy các core)
             for i in range(min(num_workers, total_tasks)):
@@ -463,6 +502,12 @@ def excute_tui_dashboard(args: Args, log_path: Path):
                 # Nếu một core hoàn thành
                 if progress_pct == 1.0 or progress_pct == -1.0:
                     tasks_completed += 1
+
+                    # --- BẮT ĐẦU THAY ĐỔI ---
+                    # Cập nhật thanh "TỔNG"
+                    progress_ui.update(total_progress_bar, completed=tasks_completed, 
+                                       description=f"{tasks_completed}/{total_tasks} files")
+                    # --- KẾT THÚC THAY ĐỔI ---
                     
                     # Gửi task TIẾP THEO cho core vừa rảnh
                     if tasks_submitted < total_tasks:

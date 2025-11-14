@@ -16,6 +16,7 @@ class Args(SimpleNamespace):
     item_name: str
     level_set_path: str
     size: set = (0, 0)
+    progress_callback: callable
 
     alter_item_name: str
 

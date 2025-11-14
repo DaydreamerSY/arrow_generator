@@ -226,7 +226,7 @@ class ClientGenerator:
                 line += points_map[(x,y)]
             logger.info(line)
 
-    def excute(self):
+    def excute(self, progress_callback=None):
         # args = FakeParser({
         #     "input_file": "1_board_test\\my_board.txt",
         #     "output_file": "2_result_test\\result.json",
@@ -265,6 +265,16 @@ class ClientGenerator:
             occupied_cells = {p for arr in all_generated_arrows for p in arr.points}
             available_cells = editable_area.difference(occupied_cells)
             num_available_cells = len(available_cells)
+
+            # === BẮT ĐẦU THAY ĐỔI ===
+            # Báo cáo tiến độ (số ô đã lấp / tổng số ô)
+            if progress_callback:
+                progress_callback(
+                    len(occupied_cells), # 1. Bước hiện tại (số ô đã lấp)
+                    total_editable_cells, # 2. Tổng số bước (tổng số ô)
+                    f"Gen length {current_length}..." # 3. Thông báo
+                )
+            # === KẾT THÚC THAY ĐỔI ===
 
             logger.info(f"Ô đã chiếm: {len(occupied_cells)} / Ô còn trống: {num_available_cells}")
             
@@ -359,6 +369,17 @@ class ClientGenerator:
         # logger.info("\n" + "="*40)
         logger.info("--- ĐÃ HOÀN TẤT TẤT CẢ CÁC VÒNG LẶP ---")
         logger.info(f"Tổng cộng đã tạo: {len(all_generated_arrows)} mũi tên.")
+
+        # 5. Báo cáo tiến độ LẦN CUỐI (để đảm bảo 100%)
+        # (Vì 'break' có thể xảy ra trước khi báo cáo cuối cùng)
+        occupied_cells = {p for arr in all_generated_arrows for p in arr.points}
+        if progress_callback:
+            progress_callback(
+                len(occupied_cells), 
+                total_editable_cells, 
+                "Generation complete!"
+            )
+        # === KẾT THÚC THAY ĐỔI ===
         
         occupied_cells = {p for arr in all_generated_arrows for p in arr.points}
         fill_percent = (len(occupied_cells) / total_editable_cells) * 100

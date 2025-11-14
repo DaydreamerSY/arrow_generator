@@ -29,6 +29,9 @@ def setup_loguru(log_path_str: str, tui_mode: bool = False):
     - tui_mode=True: Chỉ log ra file (dùng khi chạy dashboard TUI)
     """
     logger.remove() # Xóa handler mặc định
+
+    logger.level("WARNING", color="<yellow>")
+    logger.level("ERROR", color="<red>")
     
     if not tui_mode:
         # Nếu KHÔNG ở chế độ TUI, thêm sink cho terminal
@@ -37,6 +40,8 @@ def setup_loguru(log_path_str: str, tui_mode: bool = False):
             level="INFO", 
             format="<level>{message}</level>"
         )
+
+    os.environ["LOGURU_ERROR_COLOR"] = "<red>"
     
     # Sink 2: File (luôn luôn được thêm)
     # (Đảm bảo log_path_str là string hoặc Path)
@@ -48,8 +53,8 @@ def setup_loguru(log_path_str: str, tui_mode: bool = False):
         level="DEBUG",
         rotation="10 MB",
         enqueue=True,     # <-- CHÌA KHÓA cho đa xử lý
-        format="{time:HH:mm:ss.SSS} | {level:<8} | ... - {message}" 
-        # (Giữ format cũ của bạn)
+        format="{time:HH:mm:ss.SSS} | {level:<8} | {message}",
+        colorize=False # (Mặc định là False cho file)
     )
     logger.info(f"Logger đã cấu hình (TUI Mode: {tui_mode}). Ghi log vào {log_path}")
 
@@ -122,11 +127,9 @@ def process_csv_row(row, original_args, styles_dict, log_path_str, progress_queu
                 _args.turn_probability = style_params["turn_probability"]
                 _args.max_turns = style_params["max_turns"]
             else:
-                # Dùng 'warn' thay vì print
-                logger.warn(f"[Cảnh báo] Không tìm thấy style '{row['style']}' cho {row['level_name']}")
+                logger.error(f"[Cảnh báo] Không tìm thấy style '{row['style']}' cho {row['level_name']}")
         
         # 3. Thực thi
-        # Dùng 'log' (là logger.info) thay vì print
         logger.info(f"[PID {os.getpid()}] Đang xử lý: {row['level_name']} (Style: {row['style'] or 'basic'})")
         excute_file(_args)
         # 5. Báo cáo hoàn thành
@@ -338,10 +341,50 @@ def excute_tui_dashboard(args: Args, log_path: Path):
     
     # 1. Lấy Styles (hoặc tải từ file)
     styles = {
-        "Aztec": { ... },
-        "Basic": { ... },
-        # ... (dict styles của bạn) ...
+        "Aztec": {
+            "left_weight": 0.01,
+            "right_weight": 5,
+            "straight_weight": 5,
+            "turn_probability": 0.5,
+            "max_turns": 6,
+        },
+        "Basic": {
+            "left_weight": 1.0,
+            "right_weight": 1.0,
+            "straight_weight": 1.0,
+            "turn_probability": 0.3,
+            "max_turns": 18,
+        },
+        "Spaghetti": {
+            "left_weight": 1.0,
+            "right_weight": 1.0,
+            "straight_weight": 1.5,
+            "turn_probability": 0.4,
+            "max_turns": 29,
+        },
+        "Country": {
+            "left_weight": 1.3,
+            "right_weight": 1.1,
+            "straight_weight": 1.0,
+            "turn_probability": 0.25,
+            "max_turns": 13,
+        },
+        "Loopy": {
+            "left_weight": 2.7,
+            "right_weight": 1.15,
+            "straight_weight": 1.0,
+            "turn_probability": 0.27,
+            "max_turns": 14,
+        },
+        "Snake": {
+            "left_weight": 1.6,
+            "right_weight": 1.25,
+            "straight_weight": 1.0,
+            "turn_probability": 0.5,
+            "max_turns": 42,
+        },
     }
+
 
     # 2. Lấy Tasks (từ args.csv)
     try:
@@ -431,17 +474,13 @@ def excute_tui_dashboard(args: Args, log_path: Path):
 
 if __name__ == "__main__":
 
-    MODE = "TUI_DASHBOARD"
-
-    # 2. Cấu hình Logging (DỰA TRÊN CHẾ ĐỘ)
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    log_path = Path(f"logs/debug_{timestamp}.log")
-    
-    # Nếu là TUI, bật tui_mode=True (tắt log ra terminal)
-    # Nếu không, tui_mode=False (vẫn log ra terminal)
-    setup_loguru(log_path, tui_mode=(MODE == "TUI_DASHBOARD"))
-    logger.info(f"--- CHẠY Ở CHẾ ĐỘ: {MODE} ---")
-    logger.info(f"--- Log file: {log_path} ---")
+    # ----------------------------------------------------
+    # CHỌN CHẾ ĐỘ CHẠY CỦA BẠN Ở ĐÂY
+    # ----------------------------------------------------
+    # MODE = "TUI_DASHBOARD"  # Chạy 600 file CSV với dashboard
+    MODE = "TUI_DASHBOARD"       # Chạy 1 thư mục (chế độ log cuộn)
+    # MODE = "SINGLE_FILE"    # Chạy 1 file (chế độ log cuộn)
+    # ----------------------------------------------------
 
     args = Args()
     args.level_set_path = ""
@@ -466,51 +505,120 @@ if __name__ == "__main__":
     # turn_probability | 0.15  | 0.3   | 0.4       | 0.25    | 0.27  | 0.5   |
     # max_turns        | 9     | 18    | 29        | 89      | 14    | 42    |
 
-    args.generate_mode = "advance"  # basic, advance
+    # 2. Cấu hình Logging (DỰA TRÊN CHẾ ĐỘ)
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_path = Path(f"logs/debug_{timestamp}.log")
+    
+    # Nếu là TUI, bật tui_mode=True (tắt log ra terminal)
+    # Nếu không, tui_mode=False (vẫn log ra terminal)
+    setup_loguru(log_path, tui_mode=(MODE == "TUI_DASHBOARD"))
 
-    # convert 1 file icon theo tên "item_name" trong folder "level_set/level_set_#/1_0_original_icons/" thành level
-    # args.level_set_path = Path("level_set/level_set_1")
-    # args.item_name = "Daily_328.png"
-    # args.size = (30, 30)
-    # excute_single_file(args)
+    logger.info(f"--- CHẠY Ở CHẾ ĐỘ: {MODE} ---")
+    logger.info(f"--- Log file: {log_path} ---")
 
-    # convert toàn bộ file image trong toàn bộ folder "level_set/level_set_#/1_0_original_icons/" thành level
-    # args.level_set_path = Path("level_set/level_set_2")
-    # excute_folder(args)
+    # 3. Chạy chế độ đã chọn
+    try:
+        if MODE == "TUI_DASHBOARD":
+            # Tải CSV (chỉ TUI mới cần)
+            args.level_set_path = Path(__file__).parent / "level_set" / "level_set_5_csv"
+            args.csv_path = args.level_set_path / "[Data] levels - test dataframe.csv"
+            args.csv = args.load_csv()
+            
+            # Gọi hàm TUI
+            excute_tui_dashboard(args, log_path)
 
-    # convert theo data.csv
-    # args.level_set_path = Path("level_set/level_set_4_csv_pictures")
-    # args.csv_path = Path("level_set/level_set_4_csv_pictures/[Data] levels - test dataframe.csv")
-    args.level_set_path = str(Path(__file__).parent / "level_set" / "level_set_5_csv")
-    args.csv_path = str(Path(__file__).parent / "level_set" / "level_set_5_csv" / "[Data] levels - test dataframe.csv")
-    args.csv = args.load_csv()
-    # Gọi hàm TUI
-    excute_tui_dashboard(args, log_path)
-    # excute_sequence_files(args)
+        elif MODE == "FOLDER":
+            # args.level_set_path = Path("level_set/level_set_2")
+            args.level_set_path = Path(__file__).parent / "level_set" / "level_set_2"
+            excute_folder(args)
 
-    # test combination param để xem cái nào phù hợp nhất
-    # args.level_set_path = Path("level_set/level_set_4 test combine param")
-    # args.item_name = "HEART.png"
-    # args.size = (25, 25)
+        elif MODE == "SINGLE_FILE":
+            # args.level_set_path = Path("level_set/level_set_1")
+            args.level_set_path = Path(__file__).parent / "level_set" / "level_set_1"
+            args.item_name = "Daily_328.png"
+            args.size = (30, 30)
+            excute_single_file(args)
+            
+    except Exception as e:
+        logger.exception("--- LỖI NGHIÊM TRỌNG Ở MAIN ---")
 
-    # turn_probability_values = np.linspace(0.25, 1.0, 4) # 0 to 1, step_num=4 -> step=0.25
-    # straight_weight_values = np.linspace(0.25, 1.0, 4)
-    # left_weight_values = np.linspace(0.25, 1.0, 4)
-    # right_weight_values = np.linspace(0.25, 1.0, 4)
-    # max_turns_values = np.linspace(2, 10, 5)
-    # combinations = list(product(
-    #     turn_probability_values,
-    #     straight_weight_values,
-    #     left_weight_values,
-    #     right_weight_values,
-    #     max_turns_values
-    # ))
+    logger.info(f"--- KẾT THÚC CHẾ ĐỘ: {MODE} ---")
 
-    # for (a, b, c, d, e) in combinations:
-    #     args.turn_probability=a
-    #     args.straight_weight=b
-    #     args.left_weight=c
-    #     args.right_weight=d
-    #     args.max_turns=e
-    #     args.alter_item_name = f"{args.item_name}_tp={a}_sw={b}_lw={c}_rw={d}_mt={e}"
-    #     excute_single_file(args)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # MODE = "TUI_DASHBOARD"
+
+    # # 2. Cấu hình Logging (DỰA TRÊN CHẾ ĐỘ)
+    # timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    # log_path = Path(f"logs/debug_{timestamp}.log")
+    
+    # # Nếu là TUI, bật tui_mode=True (tắt log ra terminal)
+    # # Nếu không, tui_mode=False (vẫn log ra terminal)
+    # setup_loguru(log_path, tui_mode=(MODE == "TUI_DASHBOARD"))
+    # logger.info(f"--- CHẠY Ở CHẾ ĐỘ: {MODE} ---")
+    # logger.info(f"--- Log file: {log_path} ---")
+
+    
+
+    # args.generate_mode = "advance"  # basic, advance
+
+    # # convert 1 file icon theo tên "item_name" trong folder "level_set/level_set_#/1_0_original_icons/" thành level
+    # # args.level_set_path = Path("level_set/level_set_1")
+    # # args.item_name = "Daily_328.png"
+    # # args.size = (30, 30)
+    # # excute_single_file(args)
+
+    # # convert toàn bộ file image trong toàn bộ folder "level_set/level_set_#/1_0_original_icons/" thành level
+    # # args.level_set_path = Path("level_set/level_set_2")
+    # # excute_folder(args)
+
+    # # convert theo data.csv
+    # # args.level_set_path = Path("level_set/level_set_4_csv_pictures")
+    # # args.csv_path = Path("level_set/level_set_4_csv_pictures/[Data] levels - test dataframe.csv")
+    # args.level_set_path = str(Path(__file__).parent / "level_set" / "level_set_5_csv")
+    # args.csv_path = str(Path(__file__).parent / "level_set" / "level_set_5_csv" / "[Data] levels - test dataframe.csv")
+    # args.csv = args.load_csv()
+    # # Gọi hàm TUI
+    # excute_tui_dashboard(args, log_path)
+    # # excute_sequence_files(args)
+
+    # # test combination param để xem cái nào phù hợp nhất
+    # # args.level_set_path = Path("level_set/level_set_4 test combine param")
+    # # args.item_name = "HEART.png"
+    # # args.size = (25, 25)
+
+    # # turn_probability_values = np.linspace(0.25, 1.0, 4) # 0 to 1, step_num=4 -> step=0.25
+    # # straight_weight_values = np.linspace(0.25, 1.0, 4)
+    # # left_weight_values = np.linspace(0.25, 1.0, 4)
+    # # right_weight_values = np.linspace(0.25, 1.0, 4)
+    # # max_turns_values = np.linspace(2, 10, 5)
+    # # combinations = list(product(
+    # #     turn_probability_values,
+    # #     straight_weight_values,
+    # #     left_weight_values,
+    # #     right_weight_values,
+    # #     max_turns_values
+    # # ))
+
+    # # for (a, b, c, d, e) in combinations:
+    # #     args.turn_probability=a
+    # #     args.straight_weight=b
+    # #     args.left_weight=c
+    # #     args.right_weight=d
+    # #     args.max_turns=e
+    # #     args.alter_item_name = f"{args.item_name}_tp={a}_sw={b}_lw={c}_rw={d}_mt={e}"
+    # #     excute_single_file(args)

@@ -47,9 +47,9 @@ class Resizer:
                 return output_path
 
         except FileNotFoundError:
-            logger.info(f"Lỗi: Không tìm thấy file '{input_path}'")
+            logger.trace(f"Lỗi: Không tìm thấy file '{input_path}'")
         except Exception as e:
-            logger.info(f"Đã xảy ra lỗi khi xử lý {input_path}: {e}")
+            logger.trace(f"Đã xảy ra lỗi khi xử lý {input_path}: {e}")
 
 # --- CÁCH SỬ DỤNG (VÍ DỤ) ---
 # Bạn có thể chạy file này trực tiếp để test

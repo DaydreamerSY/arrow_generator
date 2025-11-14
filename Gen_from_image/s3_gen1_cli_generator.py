@@ -46,10 +46,10 @@ class ClientGenerator:
             return editable_area
             
         except FileNotFoundError:
-            logger.info(f"Lỗi: Không tìm thấy file input '{filepath}'.")
+            logger.error(f"Lỗi: Không tìm thấy file input '{filepath}'.")
             return None
         except Exception as e:
-            logger.info(f"Lỗi khi đọc file: {e}")
+            logger.error(f"Lỗi khi đọc file: {e}")
             return None
 
     def suggest_arrow_count(self, total_cells, avg_length):

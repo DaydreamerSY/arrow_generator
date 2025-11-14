@@ -80,8 +80,8 @@ class Renderer:
 
     def draw_generated_level(self, input_path, output_path):
         if not os.path.exists(input_path):
-            logger.info(f"Lỗi: Không tìm thấy file input '{input_path}'.")
-            logger.info(f"Hãy chạy 'cli_generator.py ... {input_path} ...' trước.")
+            logger.error(f"Lỗi: Không tìm thấy file input '{input_path}'.")
+            logger.error(f"Hãy chạy 'cli_generator.py ... {input_path} ...' trước.")
 
         try:
             # Mở file JSON kết quả
@@ -92,7 +92,7 @@ class Renderer:
             renderer._draw_generated_level(data, output_path)
             
         except Exception as e:
-            logger.info(f"Đã xảy ra lỗi khi render: {e}")
+            logger.error(f"Đã xảy ra lỗi khi render: {e}")
             import traceback
             traceback.print_exc()
             pass

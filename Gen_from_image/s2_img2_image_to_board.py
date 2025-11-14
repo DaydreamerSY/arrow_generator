@@ -43,10 +43,10 @@ class ImageConverter:
             # Mở ảnh và đảm bảo nó ở chế độ RGBA
             img = Image.open(input_path).convert("RGBA")
         except FileNotFoundError:
-            logger.info(f"Lỗi: Không tìm thấy file ảnh '{input_path}'.")
+            logger.error(f"Lỗi: Không tìm thấy file ảnh '{input_path}'.")
             return
         except Exception as e:
-            logger.info(f"Lỗi khi mở ảnh: {e}")
+            logger.error(f"Lỗi khi mở ảnh: {e}")
             return
 
         width, height = img.size
@@ -80,7 +80,7 @@ class ImageConverter:
             return output_path
             
         except Exception as e:
-            logger.info(f"Lỗi khi ghi file: {e}")
+            logger.error(f"Lỗi khi ghi file: {e}")
 
 # --- Hàm chạy chính ---
 if __name__ == "__main__":

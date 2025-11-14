@@ -5,8 +5,6 @@
 
 import random
 import progressbar
-
-from rich.progress import track
 from loguru import logger
 
 # --- DATA STRUCTURES (Phụ thuộc) ---
@@ -191,7 +189,7 @@ class HybridLevelGeneratorTestable:
             
             if not found_arrow:
                 status_msg = f"Could not find valid arrow {i+1}. Stopping."
-                logger.info(status_msg)
+                logger.warning(status_msg)
                 # Phải dừng và trả về kết quả hiện tại
                 break # Thoát khỏi vòng lặp 'num_to_gen'
 
@@ -474,7 +472,7 @@ class HybridLevelGeneratorTestable:
         max_walk_len = max_len 
 
         # for i in range(num_to_gen):
-        for i in track(range(num_to_gen), description=f"Try to generate (adv) arrow ..."):
+        for i in range(num_to_gen):
             # logger.info(f"Trying to generate (adv) arrow {i+1}/{num_to_gen}...")
             found_arrow = False
             for retry in range(max_retries_per_arrow):
@@ -538,7 +536,7 @@ class HybridLevelGeneratorTestable:
             
             if not found_arrow:
                 status_msg = f"Could not find valid arrow {i+1}. Stopping."
-                logger.info(status_msg)
+                logger.warning(status_msg)
                 break 
 
         if not newly_generated_arrows:

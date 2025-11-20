@@ -45,6 +45,17 @@ class Args(SimpleNamespace):
         data.update(overrides)
         return Args(**data)
 
+class Arrow:
+    """
+    Một cấu trúc dữ liệu đơn giản để chứa thông tin mũi tên.
+    Trích xuất từ file gốc.
+    """
+    def __init__(self, points, direction, layer_id, arrow_id, color):
+        self.points = points
+        self.direction = direction
+        self.layer_id = layer_id
+        self.id = arrow_id
+        self.color = color
 
 def rename_json_files(folder_path: str):
     folder = Path(folder_path)

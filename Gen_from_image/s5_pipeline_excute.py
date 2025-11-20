@@ -10,7 +10,7 @@ from itertools import product
 import sys, os, datetime
 import pandas as pd
 import numpy as np
-import multiprocessing
+import multiprocessing, gc
 
 import concurrent.futures
 from functools import partial
@@ -172,20 +172,20 @@ def excute_file(args: Args, progress_callback=None):
     else:
         item_name = args.item_name
 
-    _report(1, 10, f"Resizing {item_name}...")
+    _report(1, 10, f"Lv: {item_name} | Resizing {item_name}...")
     _img_resized_path = resizer.resize_image(
         input_path=args.item_path,
         new_size=args.size,
         output_folder=args.level_set_path / "1_1_icons"
     )
 
-    _report(2, 10, f"Converting {item_name}...")
+    _report(2, 10, f"Lv: {item_name} | Converting {item_name}...")
     _board_test_path = converter.convert_image_to_board(
         input_path=_img_resized_path,
         output_path=args.level_set_path / "1_board_test" / item_name.replace('.png', '.txt')
     )
 
-    _report(3, 10, f"Generating {item_name}...")
+    _report(3, 10, f"Lv: {item_name} | Generating {item_name}...")
     _generated_json_path = args.level_set_path / "2_result_test" / f"{item_name.replace('.png', '')}.json"
     _rendered_png_path = args.level_set_path / "3_render" / f"{item_name.replace('.png', '')}.png"
 
@@ -208,7 +208,7 @@ def excute_file(args: Args, progress_callback=None):
     client_generator = ClientGenerator(args)
     client_generator.excute(progress_callback=generator_callback)
 
-    _report(10, 10, f"Rendering {item_name}...")
+    _report(10, 10, f"Lv: {item_name} | Rendering {item_name}...")
     renderer.draw_generated_level(
         input_path=_generated_json_path,
         output_path=_rendered_png_path
@@ -241,126 +241,125 @@ def excute_single_file(args: Args):
     excute_file(args)
 
 
-def excute_sequence_files(args: Args):
+# def excute_sequence_files(args: Args):
+#     styles = {
+#         "Aztec": {
+#             "left_weight": 0,
+#             "right_weight": 5,
+#             "straight_weight": 5,
+#             "turn_probability": 0.5,
+#             "max_turns": 6,
+#         },
+#         "Basic": {
+#             "left_weight": 1.0,
+#             "right_weight": 1.0,
+#             "straight_weight": 1.0,
+#             "turn_probability": 0.3,
+#             "max_turns": 18,
+#         },
+#         "Spaghetti": {
+#             "left_weight": 1.0,
+#             "right_weight": 1.0,
+#             "straight_weight": 1.5,
+#             "turn_probability": 0.4,
+#             "max_turns": 29,
+#         },
+#         "Country": {
+#             "left_weight": 1.3,
+#             "right_weight": 1.1,
+#             "straight_weight": 1.0,
+#             "turn_probability": 0.25,
+#             "max_turns": 13,
+#         },
+#         "Loopy": {
+#             "left_weight": 2.7,
+#             "right_weight": 1.15,
+#             "straight_weight": 1.0,
+#             "turn_probability": 0.27,
+#             "max_turns": 14,
+#         },
+#         "Snake": {
+#             "left_weight": 1.6,
+#             "right_weight": 1.25,
+#             "straight_weight": 1.0,
+#             "turn_probability": 0.5,
+#             "max_turns": 42,
+#         },
+#     }
 
-    styles = {
-        "Aztec": {
-            "left_weight": 0,
-            "right_weight": 5,
-            "straight_weight": 5,
-            "turn_probability": 0.5,
-            "max_turns": 6,
-        },
-        "Basic": {
-            "left_weight": 1.0,
-            "right_weight": 1.0,
-            "straight_weight": 1.0,
-            "turn_probability": 0.3,
-            "max_turns": 18,
-        },
-        "Spaghetti": {
-            "left_weight": 1.0,
-            "right_weight": 1.0,
-            "straight_weight": 1.5,
-            "turn_probability": 0.4,
-            "max_turns": 29,
-        },
-        "Country": {
-            "left_weight": 1.3,
-            "right_weight": 1.1,
-            "straight_weight": 1.0,
-            "turn_probability": 0.25,
-            "max_turns": 13,
-        },
-        "Loopy": {
-            "left_weight": 2.7,
-            "right_weight": 1.15,
-            "straight_weight": 1.0,
-            "turn_probability": 0.27,
-            "max_turns": 14,
-        },
-        "Snake": {
-            "left_weight": 1.6,
-            "right_weight": 1.25,
-            "straight_weight": 1.0,
-            "turn_probability": 0.5,
-            "max_turns": 42,
-        },
-    }
-
-    # Aztec old
-    # left_w = 0.25
-    # right_w = 0.5
-    # straight_w = 0.75
-    # turn_p = 0.5
-    # max_turn = 6
-
+#     # Aztec old
+#     # left_w = 0.25
+#     # right_w = 0.5
+#     # straight_w = 0.75
+#     # turn_p = 0.5
+#     # max_turn = 6
 
 
-    # logger.info(args.csv)
-    # 1. Chuẩn bị danh sách các tác vụ
-    tasks = [row._asdict() for row in args.csv.itertuples()]
-    max_workers = 8 
+
+#     # logger.info(args.csv)
+#     # 1. Chuẩn bị danh sách các tác vụ
+#     tasks = [row._asdict() for row in args.csv.itertuples()]
+#     max_workers = 8 
     
-    logger.info(f"--- Bắt đầu xử lý {len(tasks)} file song song trên (tối đa) {os.cpu_count()} core ---")
+#     logger.info(f"--- Bắt đầu xử lý {len(tasks)} file song song trên (tối đa) {os.cpu_count()} core ---")
 
-    # --- BẮT ĐẦU SỬA LỖI ---
+#     # --- BẮT ĐẦU SỬA LỖI ---
     
-    # 2. Tạo một bản sao 'args' SẠCH (không chứa DataFrame)
-    # Hàm worker không cần toàn bộ file CSV, chỉ cần các settings khác
-    args_for_workers = args.clone()
-    args_for_workers.csv = None # <-- ĐÂY LÀ SỬA LỖI
+#     # 2. Tạo một bản sao 'args' SẠCH (không chứa DataFrame)
+#     # Hàm worker không cần toàn bộ file CSV, chỉ cần các settings khác
+#     args_for_workers = args.clone()
+#     args_for_workers.csv = None # <-- ĐÂY LÀ SỬA LỖI
     
-    # 3. Tạo hàm "partial" với bản sao 'args' đã làm sạch
-    worker_func = partial(process_csv_row, 
-                          original_args=args_for_workers, # <-- Dùng bản sao sạch
-                          styles_dict=styles)
+#     # 3. Tạo hàm "partial" với bản sao 'args' đã làm sạch
+#     worker_func = partial(process_csv_row, 
+#                           original_args=args_for_workers, # <-- Dùng bản sao sạch
+#                           styles_dict=styles)
     
-    # --- KẾT THÚC SỬA LỖI ---
+#     # --- KẾT THÚC SỬA LỖI ---
 
-    # 3. Chạy pool (ĐÂY LÀ PHẦN THAY ĐỔI)
-    results = [] # Nơi lưu trữ kết quả
+#     # 3. Chạy pool (ĐÂY LÀ PHẦN THAY ĐỔI)
+#     results = [] # Nơi lưu trữ kết quả
     
-    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+#     with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
         
-        # A. Gửi tất cả các tác vụ vào pool
-        # executor.submit() sẽ gửi 1 task và trả về 1 đối tượng 'Future'
-        # 'Future' giống như một tờ giấy hẹn
-        futures = {executor.submit(worker_func, task): task for task in tasks}
+#         # A. Gửi tất cả các tác vụ vào pool
+#         # executor.submit() sẽ gửi 1 task và trả về 1 đối tượng 'Future'
+#         # 'Future' giống như một tờ giấy hẹn
+#         futures = {executor.submit(worker_func, task): task for task in tasks}
 
-        # B. Dùng 'track' để theo dõi các 'Future' khi chúng hoàn thành
-        # as_completed(futures) sẽ đợi và trả về 'Future' ngay khi nó
-        # được một core xử lý xong (không theo thứ tự)
-        for future in track(concurrent.futures.as_completed(futures), 
-                            description="[green]Đang xử lý...", 
-                            total=len(tasks)):
+#         # B. Dùng 'track' để theo dõi các 'Future' khi chúng hoàn thành
+#         # as_completed(futures) sẽ đợi và trả về 'Future' ngay khi nó
+#         # được một core xử lý xong (không theo thứ tự)
+#         for future in track(concurrent.futures.as_completed(futures), 
+#                             description="[green]Đang xử lý...", 
+#                             total=len(tasks)):
             
-            try:
-                # Lấy kết quả từ 'Future'
-                result = future.result()
-                results.append(result)
-            except Exception as e:
-                # 'task_failed' bây giờ là một dict
-                task_failed = futures[future] 
+#             try:
+#                 # Lấy kết quả từ 'Future'
+#                 result = future.result()
+#                 results.append(result)
+#             except Exception as e:
+#                 # 'task_failed' bây giờ là một dict
+#                 task_failed = futures[future] 
                 
-                # --- THAY ĐỔI: DÙNG ['key'] THAY VÌ .key ---
-                logger.error(f"LỖI (ngoài worker) ở {task_failed['level_name']}: {e}")
-                results.append((task_failed['Index'], "Thất bại (executor)", str(e)))
-                # --- KẾT THÚC THAY ĐỔI ---
+#                 # --- THAY ĐỔI: DÙNG ['key'] THAY VÌ .key ---
+#                 logger.error(f"LỖI (ngoài worker) ở {task_failed['level_name']}: {e}")
+#                 results.append((task_failed['Index'], "Thất bại (executor)", str(e)))
+#                 # --- KẾT THÚC THAY ĐỔI ---
 
-    # 5. (Tùy chọn) Xử lý kết quả
-    logger.info("--- Xử lý hoàn tất ---")
-    success_count = 0
-    fail_count = 0
-    for (index, status, error_msg) in results:
-        if status == "Thành công":
-            success_count += 1
-        else:
-            fail_count += 1
-            logger.error(f"[Lỗi] Dòng {index} thất bại: {error_msg}")
+#     # 5. (Tùy chọn) Xử lý kết quả
+#     logger.info("--- Xử lý hoàn tất ---")
+#     success_count = 0
+#     fail_count = 0
+#     for (index, status, error_msg) in results:
+#         if status == "Thành công":
+#             success_count += 1
+#         else:
+#             fail_count += 1
+#             logger.error(f"[Lỗi] Dòng {index} thất bại: {error_msg}")
     
-    logger.info(f"Tổng kết: {success_count} thành công, {fail_count} thất bại.")
-    pass
+#     logger.info(f"Tổng kết: {success_count} thành công, {fail_count} thất bại.")
+#     pass
 
 
 def excute_tui_dashboard(args: Args, log_path: Path):
@@ -371,11 +370,11 @@ def excute_tui_dashboard(args: Args, log_path: Path):
     # 1. Lấy Styles (hoặc tải từ file)
     styles = {
         "Aztec": {
-            "left_weight": 0.01,
+            "left_weight": 0,
             "right_weight": 5,
             "straight_weight": 5,
             "turn_probability": 0.5,
-            "max_turns": 6,
+            "max_turns": 12,
         },
         "Basic": {
             "left_weight": 1.0,
@@ -413,7 +412,6 @@ def excute_tui_dashboard(args: Args, log_path: Path):
             "max_turns": 42,
         },
     }
-
 
     # 2. Lấy Tasks (từ args.csv)
     try:
@@ -431,89 +429,93 @@ def excute_tui_dashboard(args: Args, log_path: Path):
 
     # 4. Tạo các đối tượng giao tiếp
     manager = multiprocessing.Manager()
-    progress_queue = manager.Queue() # Hàng đợi giao tiếp
-    
-    progress_ui = Progress(
-        TextColumn("[bold blue]{task.fields[process_name]}", justify="right"),
-        BarColumn(bar_width=None),
-        "[progress.percentage]{task.percentage:>3.0f}%",
-        TextColumn("{task.description}"),
-        TimeElapsedColumn(),
-        expand=True
-    )
 
-    # 5. Chuẩn bị hàm worker
-    worker_func = partial(process_csv_row, 
-                          original_args=args_for_workers,
-                          styles_dict=styles,
-                          log_path_str=str(log_path),
-                          progress_queue=progress_queue)
+    with multiprocessing.Manager() as manager:
+        progress_queue = manager.Queue() # Hàng đợi giao tiếp
 
-    # 6. Chạy Dashboard
-    tasks_submitted = 0
-    tasks_completed = 0
-    core_tasks = {} 
-    
-    # Lấy số core tối đa, ví dụ 8 -> default 8 adjust to 4 on low-end pc or want stable core 
-    num_workers = min(os.cpu_count(), 8) or 4
-    # num_workers = 6
+        
+        progress_ui = Progress(
+            TextColumn("[bold blue]{task.fields[process_name]}", justify="right"),
+            BarColumn(bar_width=None),
+            "[progress.percentage]{task.percentage:>3.0f}%",
+            TextColumn("{task.description}"),
+            TimeElapsedColumn(),
+            expand=True
+        )
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
-        with progress_ui: # Khởi chạy giao diện rich Live
+        # 5. Chuẩn bị hàm worker
+        worker_func = partial(process_csv_row, 
+                            original_args=args_for_workers,
+                            styles_dict=styles,
+                            log_path_str=str(log_path),
+                            progress_queue=progress_queue)
 
-            # --- BẮT ĐẦU THAY ĐỔI ---
-            # Thêm một thanh tiến trình "TỔNG"
-            total_progress_bar = progress_ui.add_task(
-                "[bold bright_green]Tổng tiến độ", 
-                total=total_tasks, 
-                process_name="OVERALL" # Tên nội bộ
-            )
-            # --- KẾT THÚC THAY ĐỔI ---
-            
-            # Gửi các task đầu tiên (lấp đầy các core)
-            for i in range(min(num_workers, total_tasks)):
-                executor.submit(worker_func, tasks[i])
-                # tasks_submitted += 1
-            
-            # Vòng lặp chính: Chạy cho đến khi hoàn thành
-            while tasks_completed < total_tasks:
+        # 6. Chạy Dashboard
+        tasks_submitted = 0
+        tasks_completed = 0
+        core_tasks = {} 
+        
+        # Lấy số core tối đa, ví dụ 8 -> default 8 adjust to 4 on low-end pc or want stable core 
+        num_workers = min(os.cpu_count(), 6) or 4
+        # num_workers = 6
+
+        with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
+            with progress_ui: # Khởi chạy giao diện rich Live
+
+                # --- BẮT ĐẦU THAY ĐỔI ---
+                # Thêm một thanh tiến trình "TỔNG"
+                total_progress_bar = progress_ui.add_task(
+                    "[bold bright_green]Tổng tiến độ", 
+                    total=total_tasks, 
+                    process_name="OVERALL" # Tên nội bộ
+                )
+                # --- KẾT THÚC THAY ĐỔI ---
                 
-                try:
-                    # Lấy tin nhắn tiến độ
-                    msg = progress_queue.get()
-                    process_name, progress_pct, description = msg
-                except (EOFError, BrokenPipeError):
-                    logger.error("Mất kết nối với hàng đợi (Queue)!")
-                    break # Thoát vòng lặp
+                # Gửi các task đầu tiên (lấp đầy các core)
+                for i in range(min(num_workers, total_tasks)):
+                    executor.submit(worker_func, tasks[i])
+                    # tasks_submitted += 1
                 
-                # Cập nhật hoặc tạo mới thanh tiến trình
-                if process_name not in core_tasks:
-                    core_tasks[process_name] = progress_ui.add_task(
-                        f"[bold bright_green] {description}", total=1.0, process_name=process_name
-                    )
-                
-                task_id = core_tasks[process_name]
-                
-                if progress_pct == -1.0: # Lỗi
-                    progress_ui.update(task_id, description=f"[red]{description}", completed=1.0)
-                else:
-                    progress_ui.update(task_id, description=description, completed=progress_pct)
-
-                # Nếu một core hoàn thành
-                if progress_pct == 1.0 or progress_pct == -1.0:
-                    tasks_completed += 1
-
-                    # --- BẮT ĐẦU THAY ĐỔI ---
-                    # Cập nhật thanh "TỔNG"
-                    progress_ui.update(total_progress_bar, completed=tasks_completed, 
-                                       description=f"{tasks_completed}/{total_tasks} files")
-                    # --- KẾT THÚC THAY ĐỔI ---
+                # Vòng lặp chính: Chạy cho đến khi hoàn thành
+                while tasks_completed < total_tasks:
                     
-                    # Gửi task TIẾP THEO cho core vừa rảnh
-                    if tasks_submitted < total_tasks:
-                        executor.submit(worker_func, tasks[tasks_submitted])
-                        tasks_submitted += 1
+                    try:
+                        # Lấy tin nhắn tiến độ
+                        msg = progress_queue.get()
+                        process_name, progress_pct, description = msg
+                    except (EOFError, BrokenPipeError):
+                        logger.error("Mất kết nối với hàng đợi (Queue)!")
+                        break # Thoát vòng lặp
+                    
+                    # Cập nhật hoặc tạo mới thanh tiến trình
+                    if process_name not in core_tasks:
+                        core_tasks[process_name] = progress_ui.add_task(
+                            f"[bold bright_green] {description}", total=1.0, process_name=process_name
+                        )
+                    
+                    task_id = core_tasks[process_name]
+                    
+                    if progress_pct == -1.0: # Lỗi
+                        progress_ui.update(task_id, description=f"[red]{description}", completed=1.0)
+                    else:
+                        progress_ui.update(task_id, description=description, completed=progress_pct)
 
+                    # Nếu một core hoàn thành
+                    if progress_pct == 1.0 or progress_pct == -1.0:
+                        tasks_completed += 1
+
+                        # --- BẮT ĐẦU THAY ĐỔI ---
+                        # Cập nhật thanh "TỔNG"
+                        progress_ui.update(total_progress_bar, completed=tasks_completed, 
+                                        description=f"{tasks_completed}/{total_tasks} files")
+                        # --- KẾT THÚC THAY ĐỔI ---
+                        
+                        # Gửi task TIẾP THEO cho core vừa rảnh
+                        if tasks_submitted < total_tasks:
+                            executor.submit(worker_func, tasks[tasks_submitted])
+                            tasks_submitted += 1
+
+    gc.collect()
     setup_loguru(log_path, tui_mode=False)
     logger.info(f"Dashboard hoàn tất. Tổng cộng: {tasks_completed} tác vụ.")
 
@@ -566,8 +568,8 @@ if __name__ == "__main__":
     try:
         if MODE == "TUI_DASHBOARD":
             # Tải CSV (chỉ TUI mới cần)
-            args.level_set_path = Path(__file__).parent / "level_set" / "level_set_6_daily_challenge"
-            # args.level_set_path = Path(__file__).parent / "level_set" / "level_set_5_csv"
+            # args.level_set_path = Path(__file__).parent / "level_set" / "level_set_6_daily_challenge"
+            args.level_set_path = Path(__file__).parent / "level_set" / "level_set_5_csv"
             args.csv_path = args.level_set_path / "[Data] levels - test dataframe.csv"
             args.csv = args.load_csv()
             

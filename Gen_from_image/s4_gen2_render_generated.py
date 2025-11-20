@@ -100,7 +100,7 @@ class Renderer:
 
     def draw_generated_level(self, input_path, output_path):
         if not os.path.exists(input_path):
-            logger.error(f"Lỗi: Không tìm thấy file input '{input_path}'.")
+            logger.error(f"render | Lỗi: Không tìm thấy file input '{input_path}'.")
             return
 
         try:

@@ -6,66 +6,21 @@
 import random
 import progressbar
 from validator import Validator
-from helper import Arrow
+from helper import Arrow, Args
 from loguru import logger
-
-# --- DATA STRUCTURES (Phụ thuộc) ---
-class Arrow:
-    """
-    Một cấu trúc dữ liệu đơn giản để chứa thông tin mũi tên.
-    Trích xuất từ file gốc.
-    """
-    def __init__(self, points, direction, layer_id, arrow_id, color):
-        self.points = points
-        self.direction = direction
-        self.layer_id = layer_id
-        self.id = arrow_id
-        self.color = color
-
-# --- LOGIC (Phụ thuộc) ---
-# Lớp Validator cũng cần thiết ở đây vì generator gọi nó.
-# Bạn có thể import từ file validator.py thay vì định nghĩa lại.
-# (Để file này độc lập, tôi sẽ sao chép nó vào đây)
-
-# class Validator:
-#     def __init__(self):
-#         self.memo = {}
-#     def clear_cache(self):
-#         self.memo.clear()
-#     def _can_arrow_exit_cleanly(self, arrow_to_check, other_arrows, grid_w, grid_h):
-#         obstacle_points = {p for arr in other_arrows for p in arr.points}
-#         self_body_points = set(arrow_to_check.points[1:])
-#         all_obstacles = obstacle_points.union(self_body_points)
-#         head = arrow_to_check.points[0]; direction = arrow_to_check.direction
-#         current_pos = (head[0] + direction[0], head[1] + direction[1])
-#         while 0 <= current_pos[0] < grid_w and 0 <= current_pos[1] < grid_h:
-#             if current_pos in all_obstacles: return False
-#             current_pos = (current_pos[0] + direction[0], current_pos[1] + direction[1])
-#         return True
-#     def find_movable_arrows(self, all_arrows, grid_w, grid_h):
-#         return [arr for i, arr in enumerate(all_arrows) if self._can_arrow_exit_cleanly(arr, all_arrows[:i] + all_arrows[i+1:], grid_w, grid_h)]
-#     def is_board_state_solvable(self, arrows, grid_w, grid_h):
-#         board_key = frozenset(arr.id for arr in arrows)
-#         if board_key in self.memo: return self.memo[board_key]
-#         if not arrows: self.memo[board_key] = True; return True
-#         movable_arrows = self.find_movable_arrows(arrows, grid_w, grid_h)
-#         if not movable_arrows: self.memo[board_key] = False; return False
-#         movable_ids = {arr.id for arr in movable_arrows}
-#         next_state = [arr for arr in arrows if arr.id not in movable_ids]
-#         result = self.is_board_state_solvable(next_state, grid_w, grid_h)
-#         self.memo[board_key] = result; return result
 
 # --- LỚP GENERATOR ĐÃ TÁI CẤU TRÚC ---
 
 class HybridLevelGeneratorTestable:
     """
     Bao bọc logic 'generate_hybrid_level' và các hàm phụ trợ của nó.
-    Hàm chính đã được điều chỉnh để trả về kết quả thay vì sửa đổi
+    Hàm chính đã được điều chỉnh để trả về kết quả thay vì sửa đổiÍÍÍ
     trạng thái GUI.
     """
     
-    def __init__(self):
+    def __init__(self, args: Args):
         self.progress_bar = progressbar.ProgressBar()
+        self.args = args
         pass # Không cần trạng thái
 
     def _perform_random_walk(self, start_pos, all_occupied_points, editable_area, gen_grid_w, gen_grid_h, max_len=30):
@@ -93,14 +48,15 @@ class HybridLevelGeneratorTestable:
         
         Trả về: (list_of_new_arrows, last_arrow_id, status_message)
         """
-        logger.info("Generating level in painted area... (This will be slow)")
+
+        logger.info(f"Lv: {level_name} | Generating level in painted area... (This will be slow)")
         
         if not active_layer:
-            return [], start_arrow_id, "No active layer selected."
+            return [], start_arrow_id, f"Lv: {level_name} | No active layer selected."
         
         editable_area = active_layer.editable_area
         if not editable_area:
-            return [], start_arrow_id, "Active layer has no painted area to generate in."
+            return [], start_arrow_id, f"Lv: {level_name} | Active layer has no painted area to generate in."
 
         max_retries_per_arrow = 1000
         
@@ -190,13 +146,13 @@ class HybridLevelGeneratorTestable:
                     break 
             
             if not found_arrow:
-                status_msg = f"Could not find valid arrow {i+1}. Stopping."
+                status_msg = f"Lv: {level_name} | Could not find valid arrow {i+1}. Stopping."
                 logger.warning(status_msg)
                 # Phải dừng và trả về kết quả hiện tại
                 break # Thoát khỏi vòng lặp 'num_to_gen'
 
         if not newly_generated_arrows:
-            return [], arrow_id_counter, "Generation complete, but 0 valid arrows found. Try again."
+            return [], arrow_id_counter, f"Lv: {level_name} | Generation complete, but 0 valid arrows found. Try again."
             
         final_arrows_to_add = []
         for arrow in newly_generated_arrows:
@@ -204,7 +160,7 @@ class HybridLevelGeneratorTestable:
             real_arrow = Arrow(original_points, arrow.direction, active_layer.id, arrow.id, arrow.color)
             final_arrows_to_add.append(real_arrow)
         
-        status_msg = f"Successfully generated {len(final_arrows_to_add)} arrows!"
+        status_msg = f"Lv: {level_name} | Successfully generated {len(final_arrows_to_add)} arrows!"
         logger.success(status_msg)
         
         return final_arrows_to_add, arrow_id_counter, status_msg
@@ -433,14 +389,19 @@ class HybridLevelGeneratorTestable:
         
         Trả về: (list_of_new_arrows, last_arrow_id, status_message)
         """
-        logger.info("Generating ADVANCED level in painted area... (This will be slow)")
+
+        level_name = "unknow"
+        if hasattr(self.args, "alter_item_name"):
+            level_name = self.args.alter_item_name
+
+        logger.debug(f"Lv: {level_name} | Generating ADVANCED level in painted area... (This will be slow)")
         
         if not active_layer:
-            return [], start_arrow_id, "No active layer selected."
+            return [], start_arrow_id, f"Lv: {level_name} | No active layer selected."
         
         editable_area = active_layer.editable_area
         if not editable_area:
-            return [], start_arrow_id, "Active layer has no painted area to generate in."
+            return [], start_arrow_id, f"Lv: {level_name} | Active layer has no painted area to generate in."
 
         max_retries_per_arrow = 100
         
@@ -545,63 +506,83 @@ class HybridLevelGeneratorTestable:
 
             # Chỉ cần thử một vài điểm xuất phát, vì thuật toán Backtracking sẽ tự đào sâu
             # Giảm max_retries xuống còn 10-20 là đủ (thay vì 1000)
-            for start_node in free_points_list[:20]: 
+            for start_node in free_points_list: # Thử lần lượt các điểm trống
                 
-                # Khởi tạo path ban đầu với điểm start
-                initial_path = [start_node]
-                
-                # Chọn ngẫu nhiên 1 điểm p1 hợp lệ để tạo hướng ban đầu
-                # (Đoạn này giữ logic cũ để tìm p1)
-                p1_candidates = []
+                # 1. Xác định các hướng khởi tạo hợp lệ (Để sửa North Bias)
+                possible_start_dirs = []
                 for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-                    p1_cand = (start_node[0] + dx, start_node[1] + dy)
-                    if p1_cand in gen_editable_area and p1_cand not in gen_occupied_points:
-                        p1_candidates.append(p1_cand)
-                        
-                if not p1_candidates: continue
-                p1 = random.choice(p1_candidates)
-                initial_path.append(p1)
-
-                # --- GỌI HÀM BACKTRACKING ---
-                # Chúng ta muốn độ dài ngẫu nhiên trong khoảng min-max
-                target_len = random.randint(min_len, max_len)
+                    p1 = (start_node[0] + dx, start_node[1] + dy)
+                    # Check cơ bản p1
+                    if p1 in gen_editable_area and p1 not in gen_occupied_points:
+                         possible_start_dirs.append((dx, dy))
                 
-                generated_path = self._generate_arrow_backtracking(
-                    current_path=initial_path,
-                    target_length=target_len,
-                    editable_area=gen_editable_area,
-                    occupied_points=gen_occupied_points,
-                    gen_grid_w=gen_grid_w, 
-                    gen_grid_h=gen_grid_h,
-                    straight_weight=straight_weight,
-                    left_weight=left_weight,
-                    right_weight=right_weight,
-                    max_turns=max_turns,
-                    current_turns=0
-                )
+                if not possible_start_dirs: continue
+                random.shuffle(possible_start_dirs)
 
-                if generated_path:
-                    # Tạo mũi tên tạm để check Validator toàn cục
-                    direction = (generated_path[1][0] - generated_path[0][0], generated_path[1][1] - generated_path[0][1])
-                    temp_arrow = Arrow(generated_path, direction, active_layer.id, arrow_id_counter, default_color)
+                arrow_found_for_node = False
+                
+                # 2. Thử sinh mũi tên từ các hướng này
+                for start_dir in possible_start_dirs:
+                    p1 = (start_node[0] + start_dir[0], start_node[1] + start_dir[1])
                     
-                    # Check Validator (Vẫn cần check để đảm bảo không chặn đường các ô trống còn lại)
-                    hypothetical_board = gen_arrows_on_board + newly_generated_arrows + [temp_arrow]
-                    validator.clear_cache()
-                    if validator.is_board_state_solvable(hypothetical_board, gen_grid_w, gen_grid_h):
-                        newly_generated_arrows.append(temp_arrow)
-                        gen_occupied_points.update(generated_path)
+                    # Chuẩn bị dữ liệu cho đệ quy
+                    initial_path = [start_node, p1]
+                    
+                    # QUAN TRỌNG: Phải đánh dấu start_node và p1 là occupied trước khi gọi đệ quy
+                    # để Validator bên trong hàm đệ quy nhận diện đúng.
+                    gen_occupied_points.add(start_node)
+                    gen_occupied_points.add(p1)
+                    
+                    target_len = random.randint(min_len, max_len)
+                    weights = {"straight": straight_weight, "left": left_weight, "right": right_weight}
+                    
+                    # GỌI HÀM ĐỆ QUY MỚI
+                    # Lưu ý: Hàm này sẽ tự động check Validator ở TỪNG BƯỚC
+                    final_path = self._generate_arrow_backtracking_strict(
+                        current_path=initial_path,
+                        target_length=target_len,
+                        editable_area=gen_editable_area,
+                        occupied_points=gen_occupied_points, # Truyền set đang dùng (đã add p0, p1)
+                        gen_grid_w=gen_grid_w, gen_grid_h=gen_grid_h,
+                        weights=weights,
+                        max_turns=max_turns, current_turns=0,
+                        current_direction=start_dir, # Truyền hướng khởi tạo (Fix North Bias)
+                        validator=validator,
+                        all_fixed_arrows=newly_generated_arrows
+                    )
+                    
+                    if final_path:
+                        # Thành công!
+                        # Tạo Arrow Object
+                        direction = (final_path[1][0] - final_path[0][0], final_path[1][1] - final_path[0][1])
+                        new_arrow = Arrow(final_path, direction, active_layer.id, arrow_id_counter, default_color)
+                        newly_generated_arrows.append(new_arrow)
+                        
+                        # gen_occupied_points đã được update bên trong hàm đệ quy chưa?
+                        # Do ta truyền tham chiếu set, nhưng trong đệ quy có bước remove khi backtrack.
+                        # Khi return success, path vẫn nằm trong set nếu ta không remove ở bước cuối.
+                        # Tuy nhiên, để an toàn, ta update lại toàn bộ path vào set occupied
+                        gen_occupied_points.update(final_path)
+                        
                         arrow_id_counter += 1
                         found_arrow = True
-                        break # Xong mũi tên này, qua mũi tên tiếp theo
-            
-            if not found_arrow:
-                status_msg = f"Could not find valid arrow {i+1}. Stopping."
-                logger.warning(status_msg)
-                break 
+                        arrow_found_for_node = True
+                        
+                        # Cập nhật lại danh sách điểm trống cho vòng lặp ngoài
+                        path_set = set(final_path)
+                        free_points_list = [p for p in free_points_list if p not in path_set]
+                        
+                        break # Xong hướng này -> Xong mũi tên này
+                    else:
+                        # Thất bại hướng này -> Backtrack thủ công 2 điểm đầu
+                        gen_occupied_points.remove(start_node)
+                        gen_occupied_points.remove(p1)
+                
+                if arrow_found_for_node:
+                    break # Xong mũi tên này -> Qua mũi tên tiếp theo (for i in range(num_to_gen))
 
         if not newly_generated_arrows:
-            return [], arrow_id_counter, "Generation complete, but 0 valid arrows found. Try again."
+            return [], arrow_id_counter, f"Lv: {level_name} | Generation complete, but 0 valid arrows found. Try again."
             
         final_arrows_to_add = []
         for arrow in newly_generated_arrows:
@@ -609,87 +590,116 @@ class HybridLevelGeneratorTestable:
             real_arrow = Arrow(original_points, arrow.direction, active_layer.id, arrow.id, arrow.color)
             final_arrows_to_add.append(real_arrow)
         
-        status_msg = f"Successfully generated {len(final_arrows_to_add)} arrows!"
-        logger.info(status_msg)
+        status_msg = f"Lv: {level_name} | Successfully generated {len(final_arrows_to_add)} arrows!"
+        logger.debug(status_msg)
         
         return final_arrows_to_add, arrow_id_counter, status_msg
     
-    def _generate_arrow_backtracking(self, current_path, target_length, 
-                                     editable_area, occupied_points, 
-                                     gen_grid_w, gen_grid_h,
-                                     straight_weight, left_weight, right_weight, 
-                                     max_turns, current_turns):
-        """
-        Hàm đệ quy để sinh mũi tên theo cơ chế Quay lui (Backtracking).
-        Trả về Path hoàn chỉnh nếu thành công, hoặc None nếu thất bại.
-        """
-        # 1. ĐIỀU KIỆN DỪNG (THÀNH CÔNG)
-        # Nếu đã đạt độ dài mong muốn (hoặc nằm trong khoảng cho phép)
-        if len(current_path) >= target_length:
-            return current_path
-
-        # 2. LẤY VỊ TRÍ HIỆN TẠI VÀ TRƯỚC ĐÓ
-        current_pos = current_path[-1]
-        # Nếu mới có 1 điểm, giả lập điểm "ảo" để có hướng ban đầu
-        prev_pos = current_path[-2] if len(current_path) >= 2 else (current_pos[0], current_pos[1]-1)
-
-        # 3. TÍNH TOÁN CÁC NƯỚC ĐI TIẾP THEO (MOVES)
-        dx = current_pos[0] - prev_pos[0]
-        dy = current_pos[1] - prev_pos[1]
-        
-        # Định nghĩa 3 hướng tương đối
-        moves = [
-            {"type": "straight", "pos": (current_pos[0] + dx, current_pos[1] + dy), "weight": straight_weight},
-            {"type": "left",     "pos": (current_pos[0] - dy, current_pos[1] + dx), "weight": left_weight},
-            {"type": "right",    "pos": (current_pos[0] + dy, current_pos[1] - dx), "weight": right_weight}
-        ]
-
-        # 4. LỌC VÀ SẮP XẾP CÁC NƯỚC ĐI
-        valid_moves = []
-        for move in moves:
-            # Kiểm tra biên và vật cản
-            nx, ny = move["pos"]
-            if not (0 <= nx < gen_grid_w and 0 <= ny < gen_grid_h): continue
-            if (nx, ny) not in editable_area: continue
-            if (nx, ny) in occupied_points: continue
-            if (nx, ny) in current_path: continue # Không được tự cắn đuôi mình
-
-            # Kiểm tra giới hạn Turn (Quẹo)
-            new_turns = current_turns + (1 if move["type"] != "straight" else 0)
-            if new_turns > max_turns: continue
-
-            # Thêm yếu tố ngẫu nhiên vào weight để không phải lúc nào cũng đi thẳng tắp
-            # Randomize weight một chút: weight * random(0.8 -> 1.2)
-            adjusted_weight = move["weight"] * random.uniform(0.8, 1.2)
-            valid_moves.append((adjusted_weight, move["pos"], new_turns))
-
-        # Sắp xếp: Ưu tiên nước đi có weight cao nhất trước (Greedy DFS)
-        # Điều này giúp giữ "Style" (ví dụ ưu tiên đi thẳng)
-        valid_moves.sort(key=lambda x: x[0], reverse=True)
-
-        # 5. ĐỆ QUY (THỬ VÀ QUAY LUI)
-        for _, next_pos, next_turn_count in valid_moves:
+    def _generate_arrow_backtracking_strict(self, current_path, target_length, 
+                                            editable_area, occupied_points, 
+                                            gen_grid_w, gen_grid_h,
+                                            weights, # dict: straight, left, right
+                                            max_turns, current_turns, 
+                                            current_direction,
+                                            validator, # Truyền Validator vào
+                                            all_fixed_arrows): # Các arrow cũ đã cố định
             
-            # --- Thử bước tới ---
-            current_path.append(next_pos)
-            
-            # Gọi đệ quy
-            result = self._generate_arrow_backtracking(
-                current_path, target_length, 
-                editable_area, occupied_points, 
-                gen_grid_w, gen_grid_h,
-                straight_weight, left_weight, right_weight,
-                max_turns, next_turn_count
-            )
+            # 1. ĐIỀU KIỆN DỪNG THÀNH CÔNG
+            if len(current_path) >= target_length:
+                return current_path
 
-            # Nếu tìm thấy đường thành công ở nhánh dưới, trả về ngay
-            if result is not None:
-                return result
-            
-            # --- Quay lui (Backtrack) ---
-            # Nếu nhánh này thất bại (không đi tiếp được đến target_length),
-            # xóa điểm vừa thêm và thử move tiếp theo trong vòng lặp
-            current_path.pop()
+            current_pos = current_path[-1]
+            dx, dy = current_direction # Vector hướng hiện tại
 
-        # Nếu thử hết các hướng mà vẫn bế tắc -> Trả về None (Báo thất bại cho bước trước)
-        return None
+            # 2. ĐỊNH NGHĨA CÁC HƯỚNG ĐI TƯƠNG ĐỐI
+            # Lưu ý: Hệ tọa độ ảnh (y xuống dưới)
+            # Straight: (dx, dy)
+            # Left: (dy, -dx)
+            # Right: (-dy, dx)
+            
+            moves = [
+                {"type": "straight", "dir": (dx, dy),   "weight": weights['straight']},
+                {"type": "left",     "dir": (dy, -dx),  "weight": weights['left']},
+                {"type": "right",    "dir": (-dy, dx),  "weight": weights['right']}
+            ]
+            
+            # 3. LỌC VÀ KIỂM TRA LOGIC (VALIDATOR CHECK)
+            valid_candidates = []
+            
+            for move in moves:
+                mdx, mdy = move["dir"]
+                nx, ny = current_pos[0] + mdx, current_pos[1] + mdy
+                next_pos = (nx, ny)
+
+                # --- Check cơ bản (nhanh) ---
+                if not (0 <= nx < gen_grid_w and 0 <= ny < gen_grid_h): continue
+                if next_pos not in editable_area: continue
+                if next_pos in occupied_points: continue
+                if next_pos in current_path: continue
+                
+                new_turns = current_turns + (1 if move["type"] != "straight" else 0)
+                if new_turns > max_turns: continue
+
+                # --- CHECK NÂNG CAO: VALIDATOR (Chậm nhưng chắc) ---
+                
+                # 1. Tạo đường đi giả lập (Current path + Next pos)
+                temp_path = current_path + [next_pos]
+                
+                # 2. Tính hướng giả lập (để tạo đối tượng Arrow hợp lệ)
+                # Lấy điểm đầu và điểm thứ 2 để xác định vector hướng
+                if len(temp_path) >= 2:
+                    temp_direction = (temp_path[1][0] - temp_path[0][0], temp_path[1][1] - temp_path[0][1])
+                else:
+                    temp_direction = (0, 1) # Mặc định nếu chưa đủ dài
+                
+                # 3. Tạo đối tượng Arrow tạm thời
+                # Lưu ý: ID phải là duy nhất hoặc xử lý cache kỹ. Ở đây dùng ID tạm 999999.
+                temp_arrow = Arrow(temp_path, temp_direction, -1, 999999, "temp_color")
+                
+                # 4. Tạo board giả lập: Các arrow cũ + Arrow đang vẽ dở
+                hypothetical_board = all_fixed_arrows + [temp_arrow]
+                
+                # QUAN TRỌNG: Phải clear cache vì vị trí của arrow 999999 thay đổi liên tục
+                validator.clear_cache() 
+                
+                # 5. Gọi hàm kiểm tra đúng chuẩn (truyền list Arrow)
+                is_safe = validator.is_board_state_solvable(hypothetical_board, gen_grid_w, gen_grid_h)
+                
+                
+                if is_safe:
+                    # Random weight một chút để tạo biến thể
+                    w = move["weight"] * random.uniform(0.8, 1.2)
+                    valid_candidates.append((w, next_pos, new_turns, (mdx, mdy)))
+
+            # 4. SẮP XẾP THEO TRỌNG SỐ (Greedy DFS)
+            valid_candidates.sort(key=lambda x: x[0], reverse=True)
+
+            # 5. ĐỆ QUY
+            for _, next_pos, next_turn_count, next_dir in valid_candidates:
+                
+                # Update State
+                current_path.append(next_pos)
+                occupied_points.add(next_pos) # Đánh dấu chiếm dụng cho đệ quy sâu hơn
+                
+                result = self._generate_arrow_backtracking_strict(
+                    current_path, target_length,
+                    editable_area, occupied_points,
+                    gen_grid_w, gen_grid_h,
+                    weights,
+                    max_turns, next_turn_count, 
+                    next_dir, # Truyền hướng mới
+                    validator,
+                    all_fixed_arrows
+                )
+                
+                if result is not None:
+                    return result # Tìm thấy đường thành công!
+                
+                # Backtrack (Quay lui)
+                current_path.pop()
+                occupied_points.remove(next_pos)
+
+            return None # Bế tắc
+
+
+

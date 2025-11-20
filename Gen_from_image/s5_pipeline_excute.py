@@ -50,7 +50,7 @@ def setup_loguru(log_path_str: str, tui_mode: bool = False):
     
     logger.add(
         log_path, 
-        level="DEBUG",
+        level="TRACE",
         rotation="10 MB",
         enqueue=True,     # <-- CHÌA KHÓA cho đa xử lý
         format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level:<8} | {message}",
@@ -133,21 +133,21 @@ def process_csv_row(row, original_args, styles_dict, log_path_str, progress_queu
                 _args.turn_probability = style_params["turn_probability"]
                 _args.max_turns = style_params["max_turns"]
             else:
-                logger.error(f"[Cảnh báo] Không tìm thấy style '{row['style']}' cho {row['level_name']}")
+                logger.error(f"pipline_excute | [Cảnh báo] Không tìm thấy style '{row['style']}' cho {row['level_name']}")
         
         # 3. Thực thi
-        logger.info(f"[PID {os.getpid()}] Đang xử lý: {row['level_name']} (Style: {row['style'] or 'basic'})")
+        logger.info(f"pipline_excute | [PID {os.getpid()}] Đang xử lý: {row['level_name']} (Style: {row['style'] or 'basic'})")
         excute_file(_args, progress_callback=tui_callback)
         # 5. Báo cáo hoàn thành
         # Gửi tin nhắn: (Tên core, 100% tiến độ, thông báo)
-        progress_queue.put((process_name, 1.0, f"Hoàn thành {row['level_name']}!"))
+        progress_queue.put((process_name, 1.0, f"pipline_excute | Hoàn thành {row['level_name']}!"))
         
-        return (row['Index'], "Thành công", None)
+        return (row['Index'], f"pipline_excute | Thành công", None)
 
     except Exception as e:
-        logger.exception(f"LỖI ở {row['level_name']}")
+        logger.error(f"pipline_excute | LỖI ở {row['level_name']} {e}")
         progress_queue.put((process_name, -1.0, f"LỖI {row['level_name']}!")) # -1 là lỗi
-        return (row['Index'], "Thất bại", str(e))
+        return (row['Index'], f"pipline_excute | Thất bại", str(e))
     
 
 
@@ -515,6 +515,21 @@ def excute_tui_dashboard(args: Args, log_path: Path):
                             executor.submit(worker_func, tasks[tasks_submitted])
                             tasks_submitted += 1
 
+    # --- ĐOẠN CODE MỚI CẦN THÊM VÀO CUỐI ---
+    logger.info("Đã xử lý xong logic. Đang chờ ghi log xuống đĩa...")
+    
+    # Tạo một cột tiến trình mới dạng Spinner (xoay xoay)
+    log_task_id = progress_ui.add_task("[bold yellow]Đang lưu file log (Disk I/O)...", total=None)
+    
+    # Buộc loguru xả hết hàng đợi xuống ổ cứng trước khi thoát
+    # Hàm này sẽ block cho đến khi ghi xong
+    logger.complete()
+    
+    # Cập nhật trạng thái đã xong
+    progress_ui.update(log_task_id, description="[bold green]Đã lưu log xong!", completed=1)
+    
+    # --- KẾT THÚC ĐOẠN MỚI ---
+
     gc.collect()
     setup_loguru(log_path, tui_mode=False)
     logger.info(f"Dashboard hoàn tất. Tổng cộng: {tasks_completed} tác vụ.")
@@ -589,7 +604,7 @@ if __name__ == "__main__":
             excute_single_file(args)
             
     except Exception as e:
-        logger.exception("--- LỖI NGHIÊM TRỌNG Ở MAIN ---")
+        logger.error("--- LỖI NGHIÊM TRỌNG Ở MAIN ---")
 
     logger.info(f"--- KẾT THÚC CHẾ ĐỘ: {MODE} ---")
 

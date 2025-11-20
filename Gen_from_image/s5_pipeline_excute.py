@@ -30,8 +30,8 @@ def setup_loguru(log_path_str: str, tui_mode: bool = False):
     """
     logger.remove() # Xóa handler mặc định
 
-    logger.level("WARNING", color="<yellow>")
-    logger.level("ERROR", color="<red>")
+    # logger.level("WARNING", color="<yellow>")
+    # logger.level("ERROR", color="<red>")
     
     if not tui_mode:
         # Nếu KHÔNG ở chế độ TUI, thêm sink cho terminal
@@ -41,7 +41,7 @@ def setup_loguru(log_path_str: str, tui_mode: bool = False):
             format="<level>{message}</level>"
         )
 
-    os.environ["LOGURU_ERROR_COLOR"] = "<red>"
+    # os.environ["LOGURU_ERROR_COLOR"] = "<red>"
     
     # Sink 2: File (luôn luôn được thêm)
     # (Đảm bảo log_path_str là string hoặc Path)
@@ -53,7 +53,7 @@ def setup_loguru(log_path_str: str, tui_mode: bool = False):
         level="DEBUG",
         rotation="10 MB",
         enqueue=True,     # <-- CHÌA KHÓA cho đa xử lý
-        format="{time:HH:mm:ss.SSS} | {level:<8} | {message}",
+        format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level:<8} | {message}",
         colorize=False # (Mặc định là False cho file)
     )
     logger.info(f"Logger đã cấu hình (TUI Mode: {tui_mode}). Ghi log vào {log_path}")
@@ -245,7 +245,7 @@ def excute_sequence_files(args: Args):
 
     styles = {
         "Aztec": {
-            "left_weight": 0.01,
+            "left_weight": 0,
             "right_weight": 5,
             "straight_weight": 5,
             "turn_probability": 0.5,
@@ -455,8 +455,8 @@ def excute_tui_dashboard(args: Args, log_path: Path):
     core_tasks = {} 
     
     # Lấy số core tối đa, ví dụ 8 -> default 8 adjust to 4 on low-end pc or want stable core 
-    # num_workers = os.cpu_count() or 8 
-    num_workers = 6
+    num_workers = min(os.cpu_count(), 8) or 4
+    # num_workers = 6
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
         with progress_ui: # Khởi chạy giao diện rich Live
@@ -473,7 +473,7 @@ def excute_tui_dashboard(args: Args, log_path: Path):
             # Gửi các task đầu tiên (lấp đầy các core)
             for i in range(min(num_workers, total_tasks)):
                 executor.submit(worker_func, tasks[i])
-                tasks_submitted += 1
+                # tasks_submitted += 1
             
             # Vòng lặp chính: Chạy cho đến khi hoàn thành
             while tasks_completed < total_tasks:
@@ -489,7 +489,7 @@ def excute_tui_dashboard(args: Args, log_path: Path):
                 # Cập nhật hoặc tạo mới thanh tiến trình
                 if process_name not in core_tasks:
                     core_tasks[process_name] = progress_ui.add_task(
-                        description, total=1.0, process_name=process_name
+                        f"[bold bright_green] {description}", total=1.0, process_name=process_name
                     )
                 
                 task_id = core_tasks[process_name]
@@ -514,6 +514,7 @@ def excute_tui_dashboard(args: Args, log_path: Path):
                         executor.submit(worker_func, tasks[tasks_submitted])
                         tasks_submitted += 1
 
+    setup_loguru(log_path, tui_mode=False)
     logger.info(f"Dashboard hoàn tất. Tổng cộng: {tasks_completed} tác vụ.")
 
 
@@ -552,7 +553,7 @@ if __name__ == "__main__":
 
     # 2. Cấu hình Logging (DỰA TRÊN CHẾ ĐỘ)
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    log_path = Path(f"logs/debug_{timestamp}.log")
+    log_path = Path(__file__).parent / "logs" / f"debug_{timestamp}.log"
     
     # Nếu là TUI, bật tui_mode=True (tắt log ra terminal)
     # Nếu không, tui_mode=False (vẫn log ra terminal)
@@ -565,7 +566,8 @@ if __name__ == "__main__":
     try:
         if MODE == "TUI_DASHBOARD":
             # Tải CSV (chỉ TUI mới cần)
-            args.level_set_path = Path(__file__).parent / "level_set" / "level_set_5_csv"
+            args.level_set_path = Path(__file__).parent / "level_set" / "level_set_6_daily_challenge"
+            # args.level_set_path = Path(__file__).parent / "level_set" / "level_set_5_csv"
             args.csv_path = args.level_set_path / "[Data] levels - test dataframe.csv"
             args.csv = args.load_csv()
             

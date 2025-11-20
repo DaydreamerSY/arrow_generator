@@ -50,7 +50,7 @@ class ImageConverter:
             return
 
         width, height = img.size
-        logger.info(f"Đã tải ảnh '{input_path}' (Kích thước: {width}x{height})")
+        logger.success(f"Đã tải ảnh '{input_path}' (Kích thước: {width}x{height})")
         logger.info(f"Sử dụng ngưỡng Alpha: {self.alpha_threshold}")
 
         pixels = img.load()
@@ -76,7 +76,7 @@ class ImageConverter:
         try:
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write("\n".join(board_lines))
-            logger.info(f"Hoàn thành! Đã lưu board vào '{output_path}'.")
+            logger.success(f"Hoàn thành! Đã lưu board vào '{output_path}'.")
             return output_path
             
         except Exception as e:

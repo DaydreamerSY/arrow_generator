@@ -59,18 +59,5 @@
 				"folderPath": "/Users/locnq/Documents/[Proto] Arrowscape/v2.2/Gen_from_image/level_set/"
 			}
 		],
-		"workbench.colorCustomizations": {
-			"titleBar.activeBackground": "#ffd1dc",
-			"titleBar.border": "#ffd1dc",
-			"titleBar.activeForeground": "#000000",
-			"titleBar.inactiveBackground": "#ffd8e1",
-			"titleBar.inactiveForeground": "#262626",
-			"activityBar.background": "#ffd1dc",
-			"activityBar.foreground": "#000000",
-			"activityBar.inactiveForeground": "#000000",
-			"statusBar.background": "#ffd1dc",
-			"statusBar.border": "#ffd1dc",
-			"statusBar.foreground": "#000000"
-		}
 	}
 }

@@ -2,121 +2,134 @@ import os
 import json
 import matplotlib.pyplot as plt
 import random
+from PIL import Image, ImageDraw
 from loguru import logger
 
 # ================= CONFIG =================
-# Tên file JSON đã tạo bởi cli_generator.py
+# Các đường dẫn mặc định (có thể bị ghi đè bởi pipeline)
 INPUT_JSON = "2_result_test/result.json" 
-
-# Tên file ảnh PNG sẽ được xuất ra
 OUTPUT_IMAGE = "3_render/render_result.png"
+
+# Kích thước mỗi ô lưới (pixel)
+CELL_SIZE = 20 
 
 class Renderer:
 
     def __init__(self):
         pass
 
-    # ================= DRAW FUNCTION (Đã sửa đổi) =================
+    def _get_random_color(self):
+        """Tạo màu RGB ngẫu nhiên cho Pillow"""
+        return (
+            random.randint(0, 200), # R (giới hạn 200 để màu không quá nhạt trên nền trắng)
+            random.randint(0, 200), # G
+            random.randint(0, 200)  # B
+        )
+
     def _draw_generated_level(self, level_data, output_path):
         """
-        Hàm này được điều chỉnh từ 'draw_state' của bạn.
-        Nó đọc file JSON đầu ra của generator và vẽ trạng thái cuối cùng.
+        Sử dụng Pillow để vẽ level siêu tốc.
         """
-        
-        # Lấy thông tin từ file JSON
+        # 1. Lấy thông tin Grid
         XSize = level_data.get("XSize", 20)
         YSize = level_data.get("YSize", 20)
         all_arrows = level_data.get("Arrows", [])
         
-        # Lấy tên file (không có .json) để làm tiêu đề
-        name = os.path.basename(output_path).replace(".png", "")
+        # Tính toán kích thước ảnh
+        width_px = XSize * CELL_SIZE
+        height_px = YSize * CELL_SIZE
 
-        logger.info(f"--- Đang render: {name} ({XSize}x{YSize}) ---")
+        # 2. Tạo ảnh mới (Nền trắng)
+        # "RGB" mode, màu nền (255, 255, 255)
+        img = Image.new("RGB", (width_px, height_px), (255, 255, 255))
+        draw = ImageDraw.Draw(img)
 
-        # --- Setup Matplotlib (Giữ nguyên từ file mẫu) ---
-        plt.figure(figsize=(XSize / 5, YSize / 5))
-        ax = plt.gca()
-        ax.set_xlim(-0.5, XSize - 0.9)
-        ax.set_ylim(-0.5, YSize - 0.9)
-        ax.set_aspect("equal")
-        ax.invert_yaxis() # Trục Y đi xuống
-        plt.axis("off")
-        plt.title(f"{name} — ({len(all_arrows)} arrows) - {level_data.get('PictureName')}", fontsize=9)
+        # Giữ seed để màu sắc ổn định qua các lần chạy
+        random.seed(42)
 
-        # --- Tạo màu ngẫu nhiên (Giữ nguyên từ file mẫu) ---
-        random.seed(42) # Giữ seed để màu sắc ổn định
-        colors = [(random.random(), random.random(), random.random()) for _ in all_arrows]
+        logger.info(f"--- Đang render (Pillow): {os.path.basename(output_path)} ---")
 
-        # --- Vẽ tất cả arrow (polyline + đầu mũi tên) ---
-        # Logic này giống hệt file mẫu của bạn, nhưng dùng 'all_arrows'
-        # thay vì 'state['remaining_arrows']'
-        for i, a in enumerate(all_arrows):
+        # 3. Vẽ từng mũi tên
+        for arrow in all_arrows:
+            color = self._get_random_color()
+            indices = arrow.get("Indices", [])
             
-            # Giải mã 'Indices' để lấy tọa độ (x, y)
-            # Đây là logic cốt lõi từ file gốc của bạn
-            pts = [(idx % XSize, idx // XSize) for idx in a.get("Indices", [])]
-            if not pts:
+            if not indices:
                 continue
+
+            # Chuyển đổi Index -> Tọa độ Pixel (Tâm ô)
+            # Index = y * Width + x
+            points_px = []
+            for idx in indices:
+                grid_x = idx % XSize
+                grid_y = idx // XSize
                 
-            xs, ys = zip(*pts)
-            ax.plot(xs, ys, color=colors[i], linewidth=1)
+                # Tọa độ pixel (lấy tâm ô)
+                px = grid_x * CELL_SIZE + CELL_SIZE // 2
+                py = grid_y * CELL_SIZE + CELL_SIZE // 2
+                points_px.append((px, py))
 
-            # Vẽ đầu mũi tên (Giữ nguyên từ file mẫu)
-            # File JSON của chúng ta lưu tọa độ ĐẦU MŨI TÊN (đã offset)
-            # trong 'X' và 'Y'.
-            ax.arrow(
-                a["X"], a["Y"], 
-                a["Dx"] * 0.001, a["Dy"] * 0.001, # Dùng 0.001 để chỉ vẽ cái đầu
-                head_width=0.35, head_length=0.35,
-                fc="black", ec="none", zorder=3
+            # A. Vẽ đường nối (Thân mũi tên)
+            if len(points_px) > 1:
+                draw.line(points_px, fill=color, width=3)
+
+            # B. Vẽ đầu mũi tên (Đánh dấu điểm đầu tiên)
+            # Đơn giản hóa: Vẽ một hình tròn nhỏ hoặc vuông tại điểm đầu
+            head_x, head_y = points_px[0]
+            r = 4 # Bán kính đầu mũi tên
+            
+            # Vẽ hình tròn (Ellipse) tại đầu
+            draw.ellipse(
+                (head_x - r, head_y - r, head_x + r, head_y + r),
+                fill=color,
+                outline="black" # Viền đen cho dễ nhìn
             )
+            
+            # (Tùy chọn) Vẽ dấu chấm nhỏ ở đuôi để biết chiều
+            # tail_x, tail_y = points_px[-1]
+            # draw.point((tail_x, tail_y), fill="black")
 
-        # --- Không cần vẽ ray cast (debug) vì file JSON không có thông tin này ---
-
-        # --- Save figure ---
-        plt.savefig(output_path, dpi=200, bbox_inches="tight", pad_inches=0.05)
-        plt.close()
-        logger.info(f"✅ Đã lưu hình ảnh vào: {output_path}")
+        # 4. Lưu ảnh
+        # Pillow lưu file cực nhanh (binary stream trực tiếp)
+        try:
+            # Đảm bảo thư mục tồn tại
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            img.save(output_path)
+            logger.info(f"✅ Đã lưu hình ảnh vào: {output_path}")
+        except Exception as e:
+            logger.error(f"Lỗi khi lưu ảnh Pillow: {e}")
 
     def draw_generated_level(self, input_path, output_path):
         if not os.path.exists(input_path):
-            logger.error(f"Lỗi: Không tìm thấy file input '{input_path}'.")
-            logger.error(f"Hãy chạy 'cli_generator.py ... {input_path} ...' trước.")
+            logger.error(f"render | Lỗi: Không tìm thấy file input '{input_path}'.")
+            return
 
         try:
-            # Mở file JSON kết quả
-            data = json.load(open(input_path, "r", encoding="utf-8"))
+            with open(input_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
             
-            # Truyền dữ liệu vào hàm vẽ
             renderer = Renderer()
             renderer._draw_generated_level(data, output_path)
             
         except Exception as e:
             logger.error(f"Đã xảy ra lỗi khi render: {e}")
-            import traceback
-            traceback.print_exc()
-            pass
-
+            # In full traceback nếu cần debug
+            # import traceback; traceback.print_exc()
 
 if __name__ == "__main__":
-
-    _filename = [
-        "HEART_tp=0.0_sw0.0_lw0.0_rw0.0_mt0.0.json",
-        "HEART_tp=0.0_sw0.0_lw0.0_rw0.0_mt0.3333333333333333.json",
-        "HEART_tp=0.0_sw0.0_lw0.0_rw0.0_mt0.6666666666666666.json",
-        "HEART_tp=0.0_sw0.0_lw0.0_rw0.0_mt1.0.json",
-        "HEART_tp=0.0_sw0.0_lw0.0_rw0.3333333333333333_mt0.0.json",
-        "HEART_tp=0.0_sw0.0_lw0.0_rw0.6666666666666666.0.json",
-    ]
-
-    for file_name in _filename:
-
-        # Tên file JSON đã tạo bởi cli_generator.py
-        INPUT_JSON = f"level_set/level_set_4 test combine param/2_result_test/{file_name}" 
-
-        # Tên file ảnh PNG sẽ được xuất ra
-        OUTPUT_IMAGE = f"level_set/level_set_4 test combine param/3_render/{file_name.replace('json', 'png')}"
-
-        # Truyền dữ liệu vào hàm vẽ
-        renderer = Renderer()
-        renderer.draw_generated_level(INPUT_JSON, OUTPUT_IMAGE)
+    # Test nhanh nếu chạy trực tiếp file này
+    
+    # Tìm thử một file json trong thư mục mẫu để test
+    test_dir = "level_set/level_set_2/2_result_test"
+    if os.path.exists(test_dir):
+        files = [f for f in os.listdir(test_dir) if f.endswith(".json")]
+        if files:
+            test_file = files[0]
+            INPUT_JSON = os.path.join(test_dir, test_file)
+            OUTPUT_IMAGE = INPUT_JSON.replace("2_result_test", "3_render").replace(".json", ".png")
+            
+            print(f"Testing render with: {INPUT_JSON}")
+            renderer = Renderer()
+            renderer.draw_generated_level(INPUT_JSON, OUTPUT_IMAGE)
+    else:
+        print("Không tìm thấy thư mục test mặc định. Hãy cấu hình đường dẫn thủ công.")

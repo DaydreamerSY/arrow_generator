@@ -77,11 +77,11 @@ from collections import defaultdict
 if __name__ == "__main__":
 
     # ======= Cấu hình =======
-    name_list = ["square", "circle", "pentagon", "triangle", "rhombus", "rectangle"]
-    # name_list = ["Aztec", "Snake", "Spaghetti"]
-    total_items = 225
+    # name_list = ["square", "circle", "pentagon", "triangle", "rhombus", "rectangle"]
+    name_list = ["Aztec", "Snake", "Spaghetti"]
+    total_items = 625
     min_distance = 1
-    step_hard = -1
+    step_hard = 7
     step_very_hard = 21
     random.seed(3009199911112025114200001)
 
@@ -153,5 +153,5 @@ if __name__ == "__main__":
     # ======= Kiểm tra nhanh output =======
     logger.info("\n--- Một phần sequence ---")
     for i in result:
-        print(i)
+        logger.info(i)
 

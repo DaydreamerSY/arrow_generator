@@ -203,7 +203,7 @@ class HybridLevelGeneratorTestable:
             final_arrows_to_add.append(real_arrow)
         
         status_msg = f"Successfully generated {len(final_arrows_to_add)} arrows!"
-        logger.success(status_msg)
+        logger.info(status_msg)
         
         return final_arrows_to_add, arrow_id_counter, status_msg
     

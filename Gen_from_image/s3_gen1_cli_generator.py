@@ -201,7 +201,7 @@ class ClientGenerator:
                 
                 # Kiểm tra xem có ghi đè lên đầu mũi tên khác không
                 # (Chúng ta muốn đầu mũi tên luôn thắng)
-                if points_map[p_tail] not in ['▲', '▼', '◀', '▶']:
+                if points_map[p_tail] not in ['↑', '↓', '←', '→']:
                     dx = p_tail[0] - p_prev[0]
                     if dx != 0:
                         points_map[p_tail] = '─' # Ngang
@@ -211,10 +211,10 @@ class ClientGenerator:
             # --- VẼ ĐẦU (HEAD) (điểm 0) ---
             # Vẽ sau cùng để đảm bảo nó ghi đè lên mọi thứ
             head = path[0]; d = arr.direction
-            if d == (0, -1): char = '▲'
-            elif d == (0, 1): char = '▼'
-            elif d == (-1, 0): char = '◀'
-            elif d == (1, 0): char = '▶'
+            if d == (0, -1): char = '↑'
+            elif d == (0, 1): char = '↓'
+            elif d == (-1, 0): char = '←'
+            elif d == (1, 0): char = '→'
             else: char = 'O' # Chéo
             
             points_map[head] = char
@@ -347,13 +347,13 @@ class ClientGenerator:
                     
             else:
                 # 3f. Không tìm thấy mũi tên nào
-                logger.warning("Không thể tạo thêm mũi tên ở độ dài này.")
+                logger.info("Không thể tạo thêm mũi tên ở độ dài này.")
                 
                 # 3g. Quyết định độ dài tiếp theo
                 # Nếu chúng ta đã ở mức tối thiểu VÀ không thể tạo thêm,
                 # thì đã đến lúc DỪNG HẲN.
                 if current_length == self.args.min_length:
-                    logger.warning("Đã đạt độ dài tối thiểu và không thể tạo thêm. Dừng.")
+                    logger.info("Đã đạt độ dài tối thiểu và không thể tạo thêm. Dừng.")
                     break # Thoát khỏi vòng lặp while
                 else:
                     # Nếu chưa ở mức tối thiểu, cứ giảm độ dài
@@ -367,8 +367,8 @@ class ClientGenerator:
         
         # 4. Kết thúc vòng lặp
         # logger.info("\n" + "="*40)
-        logger.success("--- ĐÃ HOÀN TẤT TẤT CẢ CÁC VÒNG LẶP ---")
-        logger.success(f"Tổng cộng đã tạo: {len(all_generated_arrows)} mũi tên.")
+        logger.info("--- ĐÃ HOÀN TẤT TẤT CẢ CÁC VÒNG LẶP ---")
+        logger.info(f"Tổng cộng đã tạo: {len(all_generated_arrows)} mũi tên.")
 
         # 5. Báo cáo tiến độ LẦN CUỐI (để đảm bảo 100%)
         # (Vì 'break' có thể xảy ra trước khi báo cáo cuối cùng)
@@ -383,14 +383,14 @@ class ClientGenerator:
         
         occupied_cells = {p for arr in all_generated_arrows for p in arr.points}
         fill_percent = (len(occupied_cells) / total_editable_cells) * 100
-        logger.success(f"Đã lấp đầy {len(occupied_cells)} / {total_editable_cells} ô ({fill_percent:.1f}%)")
+        logger.info(f"Đã lấp đầy {len(occupied_cells)} / {total_editable_cells} ô ({fill_percent:.1f}%)")
 
         # 5. Lưu và hiển thị kết quả (chỉ một lần)
         if all_generated_arrows:
             self.save_arrows_to_json(all_generated_arrows, self.args.output_file, self.args)
             self.visualize_in_console(all_generated_arrows, editable_area)
         else:
-            logger.warning("Không có mũi tên nào được tạo.")
+            logger.info("Không có mũi tên nào được tạo.")
 
 if __name__ == "__main__":
 

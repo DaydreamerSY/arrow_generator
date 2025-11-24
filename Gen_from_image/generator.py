@@ -436,150 +436,150 @@ class HybridLevelGeneratorTestable:
 
         # for i in range(num_to_gen):
         for i in range(num_to_gen):
-            # logger.info(f"Trying to generate (adv) arrow {i+1}/{num_to_gen}...")
-            # found_arrow = False
-            # for retry in range(max_retries_per_arrow):
-            #     p2_candidates = []
-            #     for pos in gen_editable_area:
-            #         if pos not in gen_occupied_points: p2_candidates.append(pos)
-            #     if not p2_candidates: break
-            #     random.shuffle(p2_candidates)
-            #     start_p2 = None; p1 = None; found_start_pair = False
-            #     for p2_cand in p2_candidates:
-            #         p1_candidates = []
-            #         for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-            #             p1_cand = (p2_cand[0] + dx, p2_cand[1] + dy)
-            #             if p1_cand in gen_editable_area and p1_cand not in gen_occupied_points:
-            #                 p1_candidates.append(p1_cand)
-            #         if p1_candidates:
-            #             p1 = random.choice(p1_candidates); start_p2 = p2_cand
-            #             found_start_pair = True; break
-            #     if not found_start_pair: break
-
-            #     temp_occupied = gen_occupied_points.union({p1}) 
-                
-            #     # --- THAY ĐỔI CHÍNH NẰM Ở ĐÂY ---
-            #     path_body = self._perform_advance_walk_2( # <--- GỌI HÀM WALK MỚI
-            #         start_p2, 
-            #         prev_pos=p1, # <--- Cung cấp vị trí trước đó
-            #         all_occupied_points=temp_occupied, 
-            #         editable_area=gen_editable_area, 
-            #         gen_grid_w=gen_grid_w, 
-            #         gen_grid_h=gen_grid_h, 
-            #         max_len=max_walk_len - 1,
-            #         # Truyền các tham số điều khiển
-            #         # turn_probability=turn_probability,
-            #         straight_weight=straight_weight,
-            #         left_weight=left_weight,
-            #         right_weight=right_weight,
-            #         max_turns=max_turns
-            #     )
-            #     # --- HẾT THAY ĐỔI ---
-                
-            #     path = [p1] + path_body
-                
-            #     if not (min_len <= len(path) <= max_len):
-            #         continue 
-                    
-            #     direction = (p1[0] - start_p2[0], p1[1] - start_p2[1])
-            #     temp_arrow = Arrow(path, direction, active_layer.id, arrow_id_counter, default_color)
-
-            #     hypothetical_board = gen_arrows_on_board + newly_generated_arrows + [temp_arrow]
-            #     validator.clear_cache()
-                
-            #     is_solvable = validator.is_board_state_solvable(
-            #         hypothetical_board, gen_grid_w, gen_grid_h
-            #     )
-            #     if is_solvable:
-            #         newly_generated_arrows.append(temp_arrow)
-            #         gen_occupied_points.update(path)
-            #         arrow_id_counter += 1
-            #         found_arrow = True
-            #         break 
-
+            logger.info(f"Trying to generate (adv) arrow {i+1}/{num_to_gen}...")
             found_arrow = False
+            for retry in range(max_retries_per_arrow):
+                p2_candidates = []
+                for pos in gen_editable_area:
+                    if pos not in gen_occupied_points: p2_candidates.append(pos)
+                if not p2_candidates: break
+                random.shuffle(p2_candidates)
+                start_p2 = None; p1 = None; found_start_pair = False
+                for p2_cand in p2_candidates:
+                    p1_candidates = []
+                    for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                        p1_cand = (p2_cand[0] + dx, p2_cand[1] + dy)
+                        if p1_cand in gen_editable_area and p1_cand not in gen_occupied_points:
+                            p1_candidates.append(p1_cand)
+                    if p1_candidates:
+                        p1 = random.choice(p1_candidates); start_p2 = p2_cand
+                        found_start_pair = True; break
+                if not found_start_pair: break
 
-            # 1. Tối ưu chọn điểm xuất phát (như câu trả lời trước)
-            free_points_list = list(gen_editable_area - gen_occupied_points)
-            if not free_points_list: break
-            random.shuffle(free_points_list) # Shuffle 1 lần
+                temp_occupied = gen_occupied_points.union({p1}) 
+                
+                # --- THAY ĐỔI CHÍNH NẰM Ở ĐÂY ---
+                path_body = self._perform_advance_walk_2( # <--- GỌI HÀM WALK MỚI
+                    start_p2, 
+                    prev_pos=p1, # <--- Cung cấp vị trí trước đó
+                    all_occupied_points=temp_occupied, 
+                    editable_area=gen_editable_area, 
+                    gen_grid_w=gen_grid_w, 
+                    gen_grid_h=gen_grid_h, 
+                    max_len=max_walk_len - 1,
+                    # Truyền các tham số điều khiển
+                    # turn_probability=turn_probability,
+                    straight_weight=straight_weight,
+                    left_weight=left_weight,
+                    right_weight=right_weight,
+                    max_turns=max_turns
+                )
+                # --- HẾT THAY ĐỔI ---
+                
+                path = [p1] + path_body
+                
+                if not (min_len <= len(path) <= max_len):
+                    continue 
+                    
+                direction = (p1[0] - start_p2[0], p1[1] - start_p2[1])
+                temp_arrow = Arrow(path, direction, active_layer.id, arrow_id_counter, default_color)
 
-            # Chỉ cần thử một vài điểm xuất phát, vì thuật toán Backtracking sẽ tự đào sâu
-            # Giảm max_retries xuống còn 10-20 là đủ (thay vì 1000)
-            for start_node in free_points_list: # Thử lần lượt các điểm trống
+                hypothetical_board = gen_arrows_on_board + newly_generated_arrows + [temp_arrow]
+                validator.clear_cache()
                 
-                # 1. Xác định các hướng khởi tạo hợp lệ (Để sửa North Bias)
-                possible_start_dirs = []
-                for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-                    p1 = (start_node[0] + dx, start_node[1] + dy)
-                    # Check cơ bản p1
-                    if p1 in gen_editable_area and p1 not in gen_occupied_points:
-                         possible_start_dirs.append((dx, dy))
-                
-                if not possible_start_dirs: continue
-                random.shuffle(possible_start_dirs)
+                is_solvable = validator.is_board_state_solvable(
+                    hypothetical_board, gen_grid_w, gen_grid_h
+                )
+                if is_solvable:
+                    newly_generated_arrows.append(temp_arrow)
+                    gen_occupied_points.update(path)
+                    arrow_id_counter += 1
+                    found_arrow = True
+                    break 
 
-                arrow_found_for_node = False
+        #     found_arrow = False
+
+        #     # 1. Tối ưu chọn điểm xuất phát (như câu trả lời trước)
+        #     free_points_list = list(gen_editable_area - gen_occupied_points)
+        #     if not free_points_list: break
+        #     random.shuffle(free_points_list) # Shuffle 1 lần
+
+        #     # Chỉ cần thử một vài điểm xuất phát, vì thuật toán Backtracking sẽ tự đào sâu
+        #     # Giảm max_retries xuống còn 10-20 là đủ (thay vì 1000)
+        #     for start_node in free_points_list: # Thử lần lượt các điểm trống
                 
-                # 2. Thử sinh mũi tên từ các hướng này
-                for start_dir in possible_start_dirs:
-                    p1 = (start_node[0] + start_dir[0], start_node[1] + start_dir[1])
-                    
-                    # Chuẩn bị dữ liệu cho đệ quy
-                    initial_path = [start_node, p1]
-                    
-                    # QUAN TRỌNG: Phải đánh dấu start_node và p1 là occupied trước khi gọi đệ quy
-                    # để Validator bên trong hàm đệ quy nhận diện đúng.
-                    gen_occupied_points.add(start_node)
-                    gen_occupied_points.add(p1)
-                    
-                    target_len = random.randint(min_len, max_len)
-                    weights = {"straight": straight_weight, "left": left_weight, "right": right_weight}
-                    
-                    # GỌI HÀM ĐỆ QUY MỚI
-                    # Lưu ý: Hàm này sẽ tự động check Validator ở TỪNG BƯỚC
-                    final_path = self._generate_arrow_backtracking_strict(
-                        current_path=initial_path,
-                        target_length=target_len,
-                        editable_area=gen_editable_area,
-                        occupied_points=gen_occupied_points, # Truyền set đang dùng (đã add p0, p1)
-                        gen_grid_w=gen_grid_w, gen_grid_h=gen_grid_h,
-                        weights=weights,
-                        max_turns=max_turns, current_turns=0,
-                        current_direction=start_dir, # Truyền hướng khởi tạo (Fix North Bias)
-                        validator=validator,
-                        all_fixed_arrows=newly_generated_arrows
-                    )
-                    
-                    if final_path:
-                        # Thành công!
-                        # Tạo Arrow Object
-                        direction = (final_path[1][0] - final_path[0][0], final_path[1][1] - final_path[0][1])
-                        new_arrow = Arrow(final_path, direction, active_layer.id, arrow_id_counter, default_color)
-                        newly_generated_arrows.append(new_arrow)
-                        
-                        # gen_occupied_points đã được update bên trong hàm đệ quy chưa?
-                        # Do ta truyền tham chiếu set, nhưng trong đệ quy có bước remove khi backtrack.
-                        # Khi return success, path vẫn nằm trong set nếu ta không remove ở bước cuối.
-                        # Tuy nhiên, để an toàn, ta update lại toàn bộ path vào set occupied
-                        gen_occupied_points.update(final_path)
-                        
-                        arrow_id_counter += 1
-                        found_arrow = True
-                        arrow_found_for_node = True
-                        
-                        # Cập nhật lại danh sách điểm trống cho vòng lặp ngoài
-                        path_set = set(final_path)
-                        free_points_list = [p for p in free_points_list if p not in path_set]
-                        
-                        break # Xong hướng này -> Xong mũi tên này
-                    else:
-                        # Thất bại hướng này -> Backtrack thủ công 2 điểm đầu
-                        gen_occupied_points.remove(start_node)
-                        gen_occupied_points.remove(p1)
+        #         # 1. Xác định các hướng khởi tạo hợp lệ (Để sửa North Bias)
+        #         possible_start_dirs = []
+        #         for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+        #             p1 = (start_node[0] + dx, start_node[1] + dy)
+        #             # Check cơ bản p1
+        #             if p1 in gen_editable_area and p1 not in gen_occupied_points:
+        #                  possible_start_dirs.append((dx, dy))
                 
-                if arrow_found_for_node:
-                    break # Xong mũi tên này -> Qua mũi tên tiếp theo (for i in range(num_to_gen))
+        #         if not possible_start_dirs: continue
+        #         random.shuffle(possible_start_dirs)
+
+        #         arrow_found_for_node = False
+                
+        #         # 2. Thử sinh mũi tên từ các hướng này
+        #         for start_dir in possible_start_dirs:
+        #             p1 = (start_node[0] + start_dir[0], start_node[1] + start_dir[1])
+                    
+        #             # Chuẩn bị dữ liệu cho đệ quy
+        #             initial_path = [start_node, p1]
+                    
+        #             # QUAN TRỌNG: Phải đánh dấu start_node và p1 là occupied trước khi gọi đệ quy
+        #             # để Validator bên trong hàm đệ quy nhận diện đúng.
+        #             gen_occupied_points.add(start_node)
+        #             gen_occupied_points.add(p1)
+                    
+        #             target_len = random.randint(min_len, max_len)
+        #             weights = {"straight": straight_weight, "left": left_weight, "right": right_weight}
+                    
+        #             # GỌI HÀM ĐỆ QUY MỚI
+        #             # Lưu ý: Hàm này sẽ tự động check Validator ở TỪNG BƯỚC
+        #             final_path = self._generate_arrow_backtracking_strict(
+        #                 current_path=initial_path,
+        #                 target_length=target_len,
+        #                 editable_area=gen_editable_area,
+        #                 occupied_points=gen_occupied_points, # Truyền set đang dùng (đã add p0, p1)
+        #                 gen_grid_w=gen_grid_w, gen_grid_h=gen_grid_h,
+        #                 weights=weights,
+        #                 max_turns=max_turns, current_turns=0,
+        #                 current_direction=start_dir, # Truyền hướng khởi tạo (Fix North Bias)
+        #                 validator=validator,
+        #                 all_fixed_arrows=newly_generated_arrows
+        #             )
+                    
+        #             if final_path:
+        #                 # Thành công!
+        #                 # Tạo Arrow Object
+        #                 direction = (final_path[1][0] - final_path[0][0], final_path[1][1] - final_path[0][1])
+        #                 new_arrow = Arrow(final_path, direction, active_layer.id, arrow_id_counter, default_color)
+        #                 newly_generated_arrows.append(new_arrow)
+                        
+        #                 # gen_occupied_points đã được update bên trong hàm đệ quy chưa?
+        #                 # Do ta truyền tham chiếu set, nhưng trong đệ quy có bước remove khi backtrack.
+        #                 # Khi return success, path vẫn nằm trong set nếu ta không remove ở bước cuối.
+        #                 # Tuy nhiên, để an toàn, ta update lại toàn bộ path vào set occupied
+        #                 gen_occupied_points.update(final_path)
+                        
+        #                 arrow_id_counter += 1
+        #                 found_arrow = True
+        #                 arrow_found_for_node = True
+                        
+        #                 # Cập nhật lại danh sách điểm trống cho vòng lặp ngoài
+        #                 path_set = set(final_path)
+        #                 free_points_list = [p for p in free_points_list if p not in path_set]
+                        
+        #                 break # Xong hướng này -> Xong mũi tên này
+        #             else:
+        #                 # Thất bại hướng này -> Backtrack thủ công 2 điểm đầu
+        #                 gen_occupied_points.remove(start_node)
+        #                 gen_occupied_points.remove(p1)
+                
+        #         if arrow_found_for_node:
+        #             break # Xong mũi tên này -> Qua mũi tên tiếp theo (for i in range(num_to_gen))
 
         if not newly_generated_arrows:
             return [], arrow_id_counter, f"Lv: {level_name} | Generation complete, but 0 valid arrows found. Try again."
@@ -660,7 +660,7 @@ class HybridLevelGeneratorTestable:
                 hypothetical_board = all_fixed_arrows + [temp_arrow]
                 
                 # QUAN TRỌNG: Phải clear cache vì vị trí của arrow 999999 thay đổi liên tục
-                validator.clear_cache() 
+                # validator.clear_cache() 
                 
                 # 5. Gọi hàm kiểm tra đúng chuẩn (truyền list Arrow)
                 is_safe = validator.is_board_state_solvable(hypothetical_board, gen_grid_w, gen_grid_h)

@@ -11,7 +11,9 @@ INPUT_JSON = "2_result_test/result.json"
 OUTPUT_IMAGE = "3_render/render_result.png"
 
 # Kích thước mỗi ô lưới (pixel)
-CELL_SIZE = 20 
+CELL_SIZE = 10
+LINE_SIZE = 2
+HEAD_SIZE = 2
 
 class Renderer:
 
@@ -71,12 +73,12 @@ class Renderer:
 
             # A. Vẽ đường nối (Thân mũi tên)
             if len(points_px) > 1:
-                draw.line(points_px, fill=color, width=3)
+                draw.line(points_px, fill=color, width=LINE_SIZE)
 
             # B. Vẽ đầu mũi tên (Đánh dấu điểm đầu tiên)
             # Đơn giản hóa: Vẽ một hình tròn nhỏ hoặc vuông tại điểm đầu
             head_x, head_y = points_px[0]
-            r = 4 # Bán kính đầu mũi tên
+            r = HEAD_SIZE # Bán kính đầu mũi tên
             
             # Vẽ hình tròn (Ellipse) tại đầu
             draw.ellipse(

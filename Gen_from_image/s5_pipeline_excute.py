@@ -371,7 +371,7 @@ def excute_tui_dashboard(args: Args, log_path: Path):
     styles = {
         "Aztec": {
             "left_weight": 0,
-            "right_weight": 5,
+            "right_weight": 2.5,
             "straight_weight": 5,
             "turn_probability": 0.5,
             "max_turns": 12,

@@ -570,7 +570,7 @@ if __name__ == "__main__":
 
     # 2. Cấu hình Logging (DỰA TRÊN CHẾ ĐỘ)
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    log_path = Path(f"logs/debug_{timestamp}.log")
+    log_path = Path(__file__).parent / "logs" / f"debug_{timestamp}.log"
     
     # Nếu là TUI, bật tui_mode=True (tắt log ra terminal)
     # Nếu không, tui_mode=False (vẫn log ra terminal)
@@ -583,8 +583,8 @@ if __name__ == "__main__":
     try:
         if MODE == "TUI_DASHBOARD":
             # Tải CSV (chỉ TUI mới cần)
-            # args.level_set_path = Path(__file__).parent / "level_set" / "level_set_6_daily_challenge"
-            args.level_set_path = Path(__file__).parent / "level_set" / "level_set_5_csv"
+            args.level_set_path = Path(__file__).parent / "level_set" / "level_set_8_daily_challenge"
+            # args.level_set_path = Path(__file__).parent / "level_set" / "level_set_4_csv_pictures"
             args.csv_path = args.level_set_path / "[Data] levels - test dataframe.csv"
             args.csv = args.load_csv()
             

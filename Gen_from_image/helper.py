@@ -33,29 +33,32 @@ class Args(SimpleNamespace):
     max_turns: int
 
     def load_csv(self):
-        # 1_0_original_icons: chứa template png -> scale lại theo size bỏ vào 1_1_icons 
+        # 1_0_original_icons: chứa template png -> scale lại theo size bỏ vào 1_1_icons
         # -> convert sang board test -> generate arrow -> render ra img
         df = pd.read_csv(self.csv_path)
         df = df.fillna("")
         return df
-    
+
     def clone(self, **overrides):
         """Trả về bản sao của Args với các thuộc tính ghi đè"""
         data = vars(self).copy()
         data.update(overrides)
         return Args(**data)
 
+
 class Arrow:
     """
     Một cấu trúc dữ liệu đơn giản để chứa thông tin mũi tên.
     Trích xuất từ file gốc.
     """
+
     def __init__(self, points, direction, layer_id, arrow_id, color):
         self.points = points
         self.direction = direction
         self.layer_id = layer_id
         self.id = arrow_id
         self.color = color
+
 
 def rename_json_files(folder_path: str):
     folder = Path(folder_path)
@@ -82,11 +85,33 @@ def rename_json_files(folder_path: str):
             logger.info(f"Error renaming {file.name}: {e}")
 
 
-import random
-from collections import defaultdict
+import os
+import sys
 
-if __name__ == "__main__":
 
+def list_files(folder_path, exclude=None):
+    if exclude is None:
+        exclude = {".DS_Store", ".DC"}  # default exclusions
+
+    try:
+        items = os.listdir(folder_path)
+    except FileNotFoundError:
+        print("Error: Folder not found.")
+        return
+    except NotADirectoryError:
+        print("Error: Path is not a folder.")
+        return
+
+    # Filter files
+    files = [
+        f
+        for f in items
+        if os.path.isfile(os.path.join(folder_path, f)) and f not in exclude
+    ]
+
+    return files
+
+def get_random_shiet():
     # ======= Cấu hình =======
     # name_list = ["square", "circle", "pentagon", "triangle", "rhombus", "rectangle"]
     name_list = ["Aztec", "Snake", "Spaghetti"]
@@ -130,19 +155,23 @@ if __name__ == "__main__":
         """Trả về thông tin bộ (group_size) bị lặp lại, vị trí và khoảng cách."""
         seen = defaultdict(list)
         for i in range(len(seq) - group_size + 1):
-            key = tuple(seq[i:i+group_size])
+            key = tuple(seq[i : i + group_size])
             seen[key].append(i)
 
         report = []
         for key, positions in seen.items():
             if len(positions) > 1:
-                distances = [positions[i+1] - positions[i] for i in range(len(positions)-1)]
-                report.append({
-                    "pattern": key,
-                    "count": len(positions),
-                    "positions": positions,
-                    "min_distance": min(distances) if distances else None
-                })
+                distances = [
+                    positions[i + 1] - positions[i] for i in range(len(positions) - 1)
+                ]
+                report.append(
+                    {
+                        "pattern": key,
+                        "count": len(positions),
+                        "positions": positions,
+                        "min_distance": min(distances) if distances else None,
+                    }
+                )
         return report
 
     # ======= Phân tích bộ 2 và bộ 3 =======
@@ -156,7 +185,9 @@ if __name__ == "__main__":
             logger.info("Không có bộ nào bị lặp lại.")
             return
         for r in sorted(report, key=lambda x: x["min_distance"] or 999):
-            logger.info(f"{r['pattern']} -> lặp {r['count']} lần, khoảng cách nhỏ nhất {r['min_distance']}, vị trí {r['positions']}")
+            logger.info(
+                f"{r['pattern']} -> lặp {r['count']} lần, khoảng cách nhỏ nhất {r['min_distance']}, vị trí {r['positions']}"
+            )
 
     print_report(report_2, "BỘ 2 LẶP LẠI")
     print_report(report_3, "BỘ 3 LẶP LẠI")
@@ -166,3 +197,25 @@ if __name__ == "__main__":
     for i in result:
         logger.info(i)
 
+def get_files_name_in_folder(folder_path: Path):
+
+    # Add more excluded names here if needed
+    excluded_names = {".DS_Store", ".DC", "example.txt", "ignore.me"}
+
+    result = list_files(folder_path, excluded_names)
+
+    if result is not None:
+        print("Files found:")
+        for f in result:
+            print(f)
+
+import random
+from collections import defaultdict
+
+if __name__ == "__main__":
+
+    folder_path_to_get_files_name = Path(__file__).parent / "level_set" / "level_set_7_daily_challenge" / "1_0_original_icons"
+
+    get_files_name_in_folder(folder_path_to_get_files_name)
+
+    

@@ -37,17 +37,17 @@ class ClientGenerator:
                             editable_area.add((x, y))
             
             if not editable_area:
-                logger.error(f"Lv: {self.args.alter_item_name}  | Lỗi: Không tìm thấy ô nào được vẽ ('1' hoặc 'X') trong file input.")
+                logger.trace(f"Lv: {self.args.alter_item_name}  | Lỗi: Không tìm thấy ô nào được vẽ ('1' hoặc 'X') trong file input.")
                 return None
                 
             logger.info(f"Lv: {self.args.alter_item_name}  | Đã tải thành công {len(editable_area)} ô 'editable'.")
             return editable_area
             
         except FileNotFoundError:
-            logger.error(f"Lv: {self.args.alter_item_name}  | Lỗi: Không tìm thấy file input '{filepath}'.")
+            logger.trace(f"Lv: {self.args.alter_item_name}  | Lỗi: Không tìm thấy file input '{filepath}'.")
             return None
         except Exception as e:
-            logger.error(f"Lv: {self.args.alter_item_name}  | Lỗi khi đọc file: {e}")
+            logger.trace(f"Lv: {self.args.alter_item_name}  | Lỗi khi đọc file: {e}")
             return None
 
     def suggest_arrow_count(self, total_cells, avg_length):
@@ -109,7 +109,7 @@ class ClientGenerator:
                 # -----------------------
             logger.info(f"Lv: {self.args.alter_item_name}  | Đã lưu thành công level {new_x_size}x{new_y_size} với {len(all_arrows)} mũi tên.")
         except Exception as e:
-            logger.error(f"Lv: {self.args.alter_item_name}  | Lỗi khi lưu file JSON: {e}")
+            logger.trace(f"Lv: {self.args.alter_item_name}  | Lỗi khi lưu file JSON: {e}")
 
     def _get_unicode_body_char(self, p_prev, p_curr, p_next):
         """

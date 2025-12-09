@@ -99,11 +99,11 @@ class Renderer:
             img.save(output_path)
             logger.info(f"✅ Đã lưu hình ảnh vào: {output_path}")
         except Exception as e:
-            logger.error(f"Lỗi khi lưu ảnh Pillow: {e}")
+            logger.trace(f"Lỗi khi lưu ảnh Pillow: {e}")
 
     def draw_generated_level(self, input_path, output_path):
         if not os.path.exists(input_path):
-            logger.error(f"render | Lỗi: Không tìm thấy file input '{input_path}'.")
+            logger.trace(f"render | Lỗi: Không tìm thấy file input '{input_path}'.")
             return
 
         try:
@@ -114,7 +114,7 @@ class Renderer:
             renderer._draw_generated_level(data, output_path)
             
         except Exception as e:
-            logger.error(f"Đã xảy ra lỗi khi render: {e}")
+            logger.trace(f"Đã xảy ra lỗi khi render: {e}")
             # In full traceback nếu cần debug
             # import traceback; traceback.print_exc()
 

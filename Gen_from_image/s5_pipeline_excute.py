@@ -121,6 +121,9 @@ def process_csv_row(row, original_args, styles_dict, log_path_str, progress_queu
         _args.min_length = row['min_length']
         _args.size = (row['size_x'], row['size_y'])
 
+        _args.min_width = 2
+        _args.max_width = 5
+
         # 2. Áp dụng style (nếu có)
         if row['style'] != "":
             _args.generate_mode = "advance"
@@ -133,7 +136,7 @@ def process_csv_row(row, original_args, styles_dict, log_path_str, progress_queu
                 _args.turn_probability = style_params["turn_probability"]
                 _args.max_turns = style_params["max_turns"]
             else:
-                logger.error(f"pipline_excute | [Cảnh báo] Không tìm thấy style '{row['style']}' cho {row['level_name']}")
+                logger.trace(f"pipline_excute | [Cảnh báo] Không tìm thấy style '{row['style']}' cho {row['level_name']}")
         
         # 3. Thực thi
         logger.info(f"pipline_excute | [PID {os.getpid()}] Đang xử lý: {row['level_name']} (Style: {row['style'] or 'basic'})")
@@ -145,7 +148,7 @@ def process_csv_row(row, original_args, styles_dict, log_path_str, progress_queu
         return (row['Index'], f"pipline_excute | Thành công", None)
 
     except Exception as e:
-        logger.error(f"pipline_excute | LỖI ở {row['level_name']} {e}")
+        logger.trace(f"pipline_excute | LỖI ở {row['level_name']} {e}")
         progress_queue.put((process_name, -1.0, f"LỖI {row['level_name']}!")) # -1 là lỗi
         return (row['Index'], f"pipline_excute | Thất bại", str(e))
     
@@ -343,7 +346,7 @@ def excute_single_file(args: Args):
 #                 task_failed = futures[future] 
                 
 #                 # --- THAY ĐỔI: DÙNG ['key'] THAY VÌ .key ---
-#                 logger.error(f"LỖI (ngoài worker) ở {task_failed['level_name']}: {e}")
+#                 logger.trace(f"LỖI (ngoài worker) ở {task_failed['level_name']}: {e}")
 #                 results.append((task_failed['Index'], "Thất bại (executor)", str(e)))
 #                 # --- KẾT THÚC THAY ĐỔI ---
 
@@ -356,7 +359,7 @@ def excute_single_file(args: Args):
 #             success_count += 1
 #         else:
 #             fail_count += 1
-#             logger.error(f"[Lỗi] Dòng {index} thất bại: {error_msg}")
+#             logger.trace(f"[Lỗi] Dòng {index} thất bại: {error_msg}")
     
 #     logger.info(f"Tổng kết: {success_count} thành công, {fail_count} thất bại.")
 #     pass
@@ -417,7 +420,7 @@ def excute_tui_dashboard(args: Args, log_path: Path):
     try:
         tasks = [row._asdict() for row in args.csv.itertuples()]
     except AttributeError:
-        logger.error("Không tìm thấy 'args.csv'. Bạn đã tải file CSV chưa?")
+        logger.trace("Không tìm thấy 'args.csv'. Bạn đã tải file CSV chưa?")
         return
 
     total_tasks = len(tasks)
@@ -484,7 +487,7 @@ def excute_tui_dashboard(args: Args, log_path: Path):
                         msg = progress_queue.get()
                         process_name, progress_pct, description = msg
                     except (EOFError, BrokenPipeError):
-                        logger.error("Mất kết nối với hàng đợi (Queue)!")
+                        logger.trace("Mất kết nối với hàng đợi (Queue)!")
                         break # Thoát vòng lặp
                     
                     # Cập nhật hoặc tạo mới thanh tiến trình
@@ -604,7 +607,7 @@ if __name__ == "__main__":
             excute_single_file(args)
             
     except Exception as e:
-        logger.error("--- LỖI NGHIÊM TRỌNG Ở MAIN ---")
+        logger.trace("--- LỖI NGHIÊM TRỌNG Ở MAIN ---")
 
     logger.info(f"--- KẾT THÚC CHẾ ĐỘ: {MODE} ---")
 

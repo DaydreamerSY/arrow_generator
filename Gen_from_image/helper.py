@@ -32,6 +32,11 @@ class Args(SimpleNamespace):
     right_weight: float
     max_turns: int
 
+    # [NEW] Gameplay Difficulty Constraints
+    # Giá trị mặc định là None (không giới hạn)
+    min_width: int = None 
+    max_width: int = None
+
     def load_csv(self):
         # 1_0_original_icons: chứa template png -> scale lại theo size bỏ vào 1_1_icons
         # -> convert sang board test -> generate arrow -> render ra img
@@ -49,7 +54,6 @@ class Args(SimpleNamespace):
 class Arrow:
     """
     Một cấu trúc dữ liệu đơn giản để chứa thông tin mũi tên.
-    Trích xuất từ file gốc.
     """
 
     def __init__(self, points, direction, layer_id, arrow_id, color):

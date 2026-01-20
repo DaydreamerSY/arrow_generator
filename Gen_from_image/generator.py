@@ -259,7 +259,7 @@ class HybridLevelGeneratorTestable:
         cfg_max_width = getattr(self.args, 'max_width', 5)
 
         for i in range(num_to_gen):
-            logger.info(f"Trying to generate (adv) arrow {i+1}/{num_to_gen}...")
+            # logger.info(f"Trying to generate (adv) arrow {i+1}/{num_to_gen}...")
             found_arrow = False
             
             # --- VÒNG LẶP RETRY ---

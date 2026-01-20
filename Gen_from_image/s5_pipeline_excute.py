@@ -346,7 +346,7 @@ def excute_tui_dashboard(args: Args, log_path: Path):
         core_tasks = {} 
         
         # Lấy số core tối đa, ví dụ 8 -> default 8 adjust to 4 on low-end pc or want stable core 
-        num_workers = min(os.cpu_count(), 6) or 4
+        num_workers = min(os.cpu_count(), 10) or 4
         # num_workers = 6
 
         with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
@@ -473,9 +473,9 @@ if __name__ == "__main__":
     try:
         if MODE == "TUI_DASHBOARD":
             # Tải CSV (chỉ TUI mới cần)
-            args.level_set_path = Path(__file__).parent / "level_set" / "level_set_1.5.0"
+            args.level_set_path = Path(__file__).parent / "level_set" / "level_set_7_collection"
             # args.level_set_path = Path(__file__).parent / "level_set" / "level_set_4_csv_pictures"
-            args.csv_path = args.level_set_path / "[Data] levels - test dataframe v2.csv"
+            args.csv_path = args.level_set_path / "[Data] levels - test dataframe.csv"
             args.csv = args.load_csv()
 
             print(args.level_set_path)

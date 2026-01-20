@@ -9,7 +9,8 @@ if __name__ == "__main__":
     args = Args()
 
     solver = LevelSolver()
-    args.solver_input_folder = Path("input_levels")
+    # args.solver_input_folder = Path("input_levels")
+    args.solver_input_folder = Path("/Users/locnq/Documents/[Proto] Arrowscape/v2.2/Gen_from_image/level_set/level_set_9_diff_test/2_result_test")
     args.solver_solved_data = Path("_solved_data")
 
 
@@ -22,7 +23,7 @@ if __name__ == "__main__":
     args.analyze_output_csv_path = "out_put/analysis.csv"
 
     solver.excute(args)
-    renderer.excute(args) # can skip render for faster analyze stat
+    # renderer.excute(args) # can skip render for faster analyze stat
     analyer.excute(args)
 
 

@@ -17,6 +17,10 @@
 			"path": "Learning Patterns"
 		},
 		{
+			"name": "Core",
+			"path": "Core"
+		},
+		{
 			"name": "README",
 			"path": "README"
 		}

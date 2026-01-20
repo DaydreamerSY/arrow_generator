@@ -310,7 +310,7 @@ class HybridLevelGeneratorTestable:
                     gen_occupied_points.update(path)
                     arrow_id_counter += 1
                     found_arrow = True
-                    logger.debug(f"Success state with: Min-{cfg_min_width}")
+                    # logger.debug(f"Success state with: Min-{cfg_min_width}")
                     break # Break retry
 
         if not newly_generated_arrows:

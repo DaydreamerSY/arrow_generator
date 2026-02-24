@@ -226,18 +226,9 @@ class ClientGenerator:
             line = ""
             for x in range(min_x, max_x + 1): 
                 line += points_map[(x,y)]
-            logger.info(line)
+            # logger.info(line)
 
     def excute(self, progress_callback=None):
-        # args = FakeParser({
-        #     "input_file": "1_board_test\\my_board.txt",
-        #     "output_file": "2_result_test\\result.json",
-        #     "start_length": 16,
-        #     "length_step": 2,
-        #     "min_length": 4,
-        # })
-
-        # client_generator = ClientGenerator()
 
         # 1. Tải board (chỉ một lần)
         editable_area = self.load_board_from_file(self.args.input_file)
@@ -261,7 +252,7 @@ class ClientGenerator:
         # Vòng lặp sẽ tiếp tục miễn là length >= min_length
         while current_length >= self.args.min_length:
             # logger.info("\n" + "="*40)
-            logger.debug(f"Lv: {self.args.alter_item_name}  |  BẮT ĐẦU VÒNG LẶP (Length = {current_length}) ---")
+            # logger.debug(f"Lv: {self.args.alter_item_name}  |  BẮT ĐẦU VÒNG LẶP (Length = {current_length}) ---")
             
             # 3a. Tính toán các ô còn trống
             occupied_cells = {p for arr in all_generated_arrows for p in arr.points}
@@ -278,7 +269,7 @@ class ClientGenerator:
                 )
             # === KẾT THÚC THAY ĐỔI ===
 
-            logger.debug(f"Lv: {self.args.alter_item_name}  | Ô đã chiếm: {len(occupied_cells)} / Ô còn trống: {num_available_cells}")
+            # logger.debug(f"Lv: {self.args.alter_item_name}  | Ô đã chiếm: {len(occupied_cells)} / Ô còn trống: {num_available_cells}")
             
             # 3b. Kiểm tra điều kiện dừng (nếu không còn ô trống)
             if num_available_cells == 0:
@@ -287,7 +278,7 @@ class ClientGenerator:
 
             # 3c. Đề xuất số lượng mũi tên cho vòng này
             num_to_gen = self.suggest_arrow_count(num_available_cells, current_length)
-            logger.debug(f"Lv: {self.args.alter_item_name}  | Đề xuất tạo {num_to_gen} mũi tên cho vòng lặp này...")
+            # logger.debug(f"Lv: {self.args.alter_item_name}  | Đề xuất tạo {num_to_gen} mũi tên cho vòng lặp này...")
             
             # 3d. Tạo MockLayer
             mock_layer = MockLayer(0, mock_color, editable_area)
@@ -323,7 +314,7 @@ class ClientGenerator:
                     max_turns=self.args.max_turns
                 )
             
-            logger.debug(f"Lv: {self.args.alter_item_name}  | Kết quả vòng lặp: {status_msg}")
+            # logger.debug(f"Lv: {self.args.alter_item_name}  | Kết quả vòng lặp: {status_msg}")
 
             # === MODIFICATION START: Logic lặp lại tại min_length ===
             
@@ -335,35 +326,36 @@ class ClientGenerator:
                 # 3g. Quyết định độ dài tiếp theo
                 # CHỈ giảm độ dài nếu chúng ta CHƯA ở mức tối thiểu
                 if current_length > self.args.min_length:
-                    logger.debug(f"Lv: {self.args.alter_item_name}  | Giảm độ dài từ {current_length}...")
+                    # logger.debug(f"Lv: {self.args.alter_item_name}  | Giảm độ dài từ {current_length}...")
                     current_length -= self.args.length_step
                     # Đảm bảo không bị "hụt" (overshoot)
                     if current_length < self.args.min_length:
                         current_length = self.args.min_length
-                    logger.debug(f"Lv: {self.args.alter_item_name}  | Độ dài vòng tiếp theo: {current_length}")
+                    # logger.debug(f"Lv: {self.args.alter_item_name}  | Độ dài vòng tiếp theo: {current_length}")
                 else:
                     # Nếu current_length == min_length,
                     # KHÔNG LÀM GÌ CẢ. Vòng lặp while sẽ tự động 
                     # chạy lại với CÙNG một min_length.
-                    logger.debug(f"Lv: {self.args.alter_item_name}  | Tiếp tục lặp lại ở độ dài tối thiểu ({current_length})...")
+                    # logger.debug(f"Lv: {self.args.alter_item_name}  | Tiếp tục lặp lại ở độ dài tối thiểu ({current_length})...")
+                    pass
                     
             else:
                 # 3f. Không tìm thấy mũi tên nào
-                logger.warning(f"Lv: {self.args.alter_item_name}  | Không thể tạo thêm mũi tên ở độ dài này.")
+                # logger.warning(f"Lv: {self.args.alter_item_name}  | Không thể tạo thêm mũi tên ở độ dài này.")
                 
                 # 3g. Quyết định độ dài tiếp theo
                 # Nếu chúng ta đã ở mức tối thiểu VÀ không thể tạo thêm,
                 # thì đã đến lúc DỪNG HẲN.
                 if current_length == self.args.min_length:
-                    logger.warning(f"Lv: {self.args.alter_item_name}  | Đã đạt độ dài tối thiểu và không thể tạo thêm. Dừng.")
+                    # logger.warning(f"Lv: {self.args.alter_item_name}  | Đã đạt độ dài tối thiểu và không thể tạo thêm. Dừng.")
                     break # Thoát khỏi vòng lặp while
                 else:
                     # Nếu chưa ở mức tối thiểu, cứ giảm độ dài
-                    logger.debug(f"Lv: {self.args.alter_item_name}  | Giảm độ dài từ {current_length}...")
+                    # logger.debug(f"Lv: {self.args.alter_item_name}  | Giảm độ dài từ {current_length}...")
                     current_length -= self.args.length_step
                     if current_length < self.args.min_length:
                         current_length = self.args.min_length
-                    logger.debug(f"Lv: {self.args.alter_item_name}  | Độ dài vòng tiếp theo: {current_length}")
+                    # logger.debug(f"Lv: {self.args.alter_item_name}  | Độ dài vòng tiếp theo: {current_length}")
 
             # === MODIFICATION END ===
         
@@ -390,7 +382,7 @@ class ClientGenerator:
         # 5. Lưu và hiển thị kết quả (chỉ một lần)
         if all_generated_arrows:
             self.save_arrows_to_json(all_generated_arrows, self.args.output_file, self.args)
-            self.visualize_in_console(all_generated_arrows, editable_area)
+            # self.visualize_in_console(all_generated_arrows, editable_area)
         else:
             logger.warning(f"Lv: {self.args.alter_item_name}  | Không có mũi tên nào được tạo.")
 

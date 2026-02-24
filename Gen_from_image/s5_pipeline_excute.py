@@ -22,29 +22,31 @@ from loguru import logger
 # dbg = logger.debug
 
 # === KHỐI LOGGING MỚI (AN TOÀN CHO ĐA XỬ LÝ) ===
-def setup_loguru(log_path_str: str, tui_mode: bool = False):
+def setup_loguru(log_path_str: str, tui_mode: bool = False, disable_logging: bool = False):
     """
-    Cấu hình logger.
-    - tui_mode=False: Log ra cả file và terminal (mặc định)
-    - tui_mode=True: Chỉ log ra file (dùng khi chạy dashboard TUI)
+    Cấu hình hoặc vô hiệu hóa hoàn toàn logger.
+    - disable_logging=True: Gỡ bỏ mọi output và chặn xử lý log.
     """
-    logger.remove() # Xóa handler mặc định
+    # 1. Gỡ bỏ mọi handler hiện tại (Terminal, File, v.v.)
+    logger.remove()
 
+    if disable_logging:
+        # 2. Vô hiệu hóa xử lý log cho namespace hiện tại (thường là tên file hoặc __main__)
+        # Để vô hiệu hóa toàn cục, có thể dùng chuỗi trống ""
+        logger.disable("") 
+        return
+
+    # Nếu không disable, tiến hành cài đặt như bình thường
     logger.level("WARNING", color="<yellow>")
     logger.level("ERROR", color="<red>")
     
     if not tui_mode:
-        # Nếu KHÔNG ở chế độ TUI, thêm sink cho terminal
         logger.add(
             sys.stderr, 
             level="INFO", 
             format="<level>{message}</level>"
         )
 
-    os.environ["LOGURU_ERROR_COLOR"] = "<red>"
-    
-    # Sink 2: File (luôn luôn được thêm)
-    # (Đảm bảo log_path_str là string hoặc Path)
     log_path = Path(log_path_str)
     log_path.parent.mkdir(parents=True, exist_ok=True)
     
@@ -52,11 +54,10 @@ def setup_loguru(log_path_str: str, tui_mode: bool = False):
         log_path, 
         level="TRACE",
         rotation="10 MB",
-        enqueue=True,     # <-- CHÌA KHÓA cho đa xử lý
+        enqueue=True,
         format="{time:HH:mm:ss.SSS} | {level:<8} | {message}",
-        colorize=False # (Mặc định là False cho file)
+        colorize=False
     )
-    logger.info(f"Logger đã cấu hình (TUI Mode: {tui_mode}). Ghi log vào {log_path}")
 
 # 4. GỌI HÀM SETUP NGAY LẬP TỨC (Ở GLOBAL SCOPE)
 # Tiến trình chính sẽ chạy, không thấy env var, tự tạo path và set env var.
@@ -346,8 +347,9 @@ def excute_tui_dashboard(args: Args, log_path: Path):
         core_tasks = {} 
         
         # Lấy số core tối đa, ví dụ 8 -> default 8 adjust to 4 on low-end pc or want stable core 
-        num_workers = min(os.cpu_count(), 10) or 4
-        # num_workers = 6
+        # core, processer
+        # num_workers = min(os.cpu_count(), 10) or 4
+        num_workers = 4
 
         with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
             with progress_ui: # Khởi chạy giao diện rich Live
@@ -434,6 +436,7 @@ if __name__ == "__main__":
     MODE = "TUI_DASHBOARD"       # Chạy 1 thư mục (chế độ log cuộn)
     # MODE = "SINGLE_FILE"    # Chạy 1 file (chế độ log cuộn)
     # ----------------------------------------------------
+    ENABLE_LOGS = False
 
     args = Args()
     args.level_set_path = ""
@@ -464,7 +467,8 @@ if __name__ == "__main__":
     
     # Nếu là TUI, bật tui_mode=True (tắt log ra terminal)
     # Nếu không, tui_mode=False (vẫn log ra terminal)
-    setup_loguru(log_path, tui_mode=(MODE == "TUI_DASHBOARD"))
+    # Gọi hàm setup với tham số disable
+    setup_loguru(str(log_path), tui_mode=True, disable_logging=not ENABLE_LOGS)
 
     logger.info(f"--- CHẠY Ở CHẾ ĐỘ: {MODE} ---")
     logger.info(f"--- Log file: {log_path} ---")
@@ -473,9 +477,9 @@ if __name__ == "__main__":
     try:
         if MODE == "TUI_DASHBOARD":
             # Tải CSV (chỉ TUI mới cần)
-            args.level_set_path = Path(__file__).parent / "level_set" / "level_set_7_collection"
+            args.level_set_path = Path(__file__).parent / "level_set" / "level_set_12_DC_pictures_2"
             # args.level_set_path = Path(__file__).parent / "level_set" / "level_set_4_csv_pictures"
-            args.csv_path = args.level_set_path / "[Data] levels - test dataframe.csv"
+            args.csv_path = args.level_set_path / "[Data] levels - test dataframe_replay.csv"
             args.csv = args.load_csv()
 
             print(args.level_set_path)

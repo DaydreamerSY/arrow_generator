@@ -45,7 +45,7 @@ class HybridLevelGeneratorTestable:
         num_to_gen,
         avg_length,
     ):
-        logger.info(f"Generating level in painted area...")
+        # logger.info(f"Generating level in painted area...")
         if not active_layer: return [], start_arrow_id, "No active layer."
         editable_area = active_layer.editable_area
         if not editable_area: return [], start_arrow_id, "No editable area."
@@ -219,7 +219,7 @@ class HybridLevelGeneratorTestable:
     ):
         level_name = "unknown"
         if hasattr(self.args, "alter_item_name"): level_name = self.args.alter_item_name
-        logger.debug(f"Lv: {level_name} | Generating ADVANCED level...")
+        # logger.debug(f"Lv: {level_name} | Generating ADVANCED level...")
         if not active_layer: return [], start_arrow_id, "No active layer."
         editable_area = active_layer.editable_area
         if not editable_area: return [], start_arrow_id, "No editable area."

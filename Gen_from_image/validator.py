@@ -1,98 +1,97 @@
 # File: validator.py
 # Cập nhật:
-# 1. Loại bỏ max_depth.
-# 2. Thêm logic kiểm tra min_width và max_width chặt chẽ.
+# 1. Cấu trúc lại bằng vòng lặp While (Khử đệ quy).
+# 2. Thay thế cấp phát Set O(N^2) bằng Mảng phẳng 1D (In-place Memory).
+# 3. Tối ưu hóa kiểm tra Raycast xuống chi phí O(1) cho mỗi bước.
 
 from helper import Arrow
-
 
 class Validator:
     def __init__(self):
         pass
 
     def clear_cache(self):
+        # Hàm này được giữ lại để tương thích với API của Generator
+        # Tuy nhiên, kiến trúc mới không sinh rác nên không cần cache clear.
         pass
-
-    def _can_arrow_exit_cleanly(self, arrow_to_check, other_arrows, grid_w, grid_h):
-        obstacle_points = {p for arr in other_arrows for p in arr.points}
-        self_body_points = set(arrow_to_check.points[1:])
-        all_obstacles = obstacle_points.union(self_body_points)
-
-        head = arrow_to_check.points[0]
-        direction = arrow_to_check.direction
-        current_pos = (head[0] + direction[0], head[1] + direction[1])
-
-        while 0 <= current_pos[0] < grid_w and 0 <= current_pos[1] < grid_h:
-            if current_pos in all_obstacles:
-                return False
-            current_pos = (current_pos[0] + direction[0], current_pos[1] + direction[1])
-        return True
-
-    def find_movable_arrows(self, all_arrows, grid_w, grid_h):
-        return [
-            arr
-            for i, arr in enumerate(all_arrows)
-            if self._can_arrow_exit_cleanly(
-                arr, all_arrows[:i] + all_arrows[i + 1 :], grid_w, grid_h
-            )
-        ]
-
-    def is_board_state_solvable(self, arrows, grid_w, grid_h, min_width=None, max_width=None):
-        """
-        Kiểm tra tính giải được và ràng buộc Width (Branching Factor).
-        Hàm đệ quy này sẽ mô phỏng việc giải cho đến khi hết bàn cờ.
-        """
-        # 1. Base case: Hết mũi tên -> Success
-        if not arrows:
-            return True
-
-        # 2. Tìm danh sách các mũi tên có thể di chuyển
-        movable_arrows = self.find_movable_arrows(arrows, grid_w, grid_h)
-        current_width = len(movable_arrows)
-
-        # 3. Deadlock check (Cơ bản)
-        if current_width == 0:
-            return False
-
-        # 4. --- WIDTH CONSTRAINT CHECK ---
-        
-        # Check Max Width (Quá dễ/lỏng lẻo)
-        if max_width is not None:
-            if current_width > max_width:
-                return False
-
-        # Check Min Width (Quá chặt/tuyến tính)
-        # Chỉ check khi số lượng mũi tên còn lại ĐỦ để đáp ứng min_width
-        # Ví dụ: min_width=3, nhưng trên bàn chỉ còn 2 con -> Không thể bắt lỗi được.
-        if min_width is not None:
-            if len(arrows) >= min_width:
-                if current_width < min_width:
-                    return False
-        # ---------------------------------
-
-        # 5. Greedy Reduction
-        # Giả lập người chơi loại bỏ tất cả các mũi tên có thể đi được
-        # (Cách này nhanh nhưng làm giảm width của bước tiếp theo rất mạnh)
-        # Nếu muốn chính xác hơn về width của từng bước đơn lẻ, ta chỉ nên loại bỏ 1 con, 
-        # nhưng như thế sẽ rất chậm (O(N!)). 
-        # Với generator, ta chấp nhận mô hình Greedy: "Giải phóng mặt bằng tối đa".
-        
-        movable_ids = {arr.id for arr in movable_arrows}
-        next_state = [arr for arr in arrows if arr.id not in movable_ids]
-
-        # Safety check: Nếu không loại bỏ được gì (đã check ở bước 3, nhưng check lại cho chắc)
-        if len(next_state) == len(arrows):
-            return False
-
-        # 6. Đệ quy
-        return self.is_board_state_solvable(next_state, grid_w, grid_h, min_width, max_width)
 
     def check_global_constraints(self, current_arrows, new_arrow_candidate, grid_w, grid_h, min_width=None, max_width=None):
         """
-        Wrapper function để gọi từ Generator.
+        Đánh giá tính hợp lệ của toàn bộ bảng sử dụng thuật toán Greedy Mô phỏng.
+        Tối ưu hóa: Không cấp phát bộ nhớ động trong vòng lặp.
         """
         hypothetical_board = current_arrows + [new_arrow_candidate]
-        return self.is_board_state_solvable(
+        
+        # Chuyển giao logic kiểm tra cho hàm lặp
+        return self._is_board_state_solvable_iterative(
             hypothetical_board, grid_w, grid_h, 
             min_width=min_width, max_width=max_width
         )
+
+    def _is_board_state_solvable_iterative(self, arrows, grid_w, grid_h, min_width, max_width):
+        if not arrows:
+            return True
+
+        # 1. Cấp phát bản đồ tĩnh 1D (O(W * H) Không gian cố định)
+        grid_size = grid_w * grid_h
+        occupied = [False] * grid_size
+
+        # 2. Ánh xạ toàn bộ tọa độ mũi tên lên bản đồ tĩnh (Thực thi 1 lần duy nhất)
+        for arr in arrows:
+            for x, y in arr.points:
+                if 0 <= x < grid_w and 0 <= y < grid_h:
+                    occupied[y * grid_w + x] = True
+
+        # Duy trì mảng quản lý các mũi tên chưa được giải
+        remaining_arrows = list(arrows)
+
+        # 3. Vòng lặp Mô phỏng Greedy
+        while remaining_arrows:
+            movable_arrows = []
+            movable_indices = []
+
+            # 3A. Quét Raycast để tìm mũi tên có thể di chuyển
+            for i, arr in enumerate(remaining_arrows):
+                head_x, head_y = arr.points[0]
+                dx, dy = arr.direction
+                cx, cy = head_x + dx, head_y + dy
+
+                can_exit = True
+                # Mô phỏng đường đạn bay ra khỏi bảng
+                while 0 <= cx < grid_w and 0 <= cy < grid_h:
+                    if occupied[cy * grid_w + cx]:
+                        can_exit = False
+                        break
+                    cx += dx
+                    cy += dy
+
+                if can_exit:
+                    movable_arrows.append(arr)
+                    movable_indices.append(i)
+
+            current_width = len(movable_arrows)
+
+            # 3B. Đánh giá tính hợp lệ (Deadlock & Ràng buộc Branching Factor)
+            if current_width == 0:
+                return False
+
+            if max_width is not None and current_width > max_width:
+                return False
+
+            if min_width is not None and len(remaining_arrows) >= min_width:
+                if current_width < min_width:
+                    return False
+
+            # 3C. Giải phóng mặt bằng (Sửa đổi bộ nhớ tại chỗ)
+            # Tắt cờ occupied của các mũi tên vừa thoát để mở đường cho vòng lặp tiếp theo
+            for arr in movable_arrows:
+                for x, y in arr.points:
+                    if 0 <= x < grid_w and 0 <= y < grid_h:
+                        occupied[y * grid_w + x] = False
+
+            # Xóa các mũi tên đã thoát khỏi danh sách chờ (Duyệt ngược để tránh lệch Index)
+            for idx in reversed(movable_indices):
+                remaining_arrows.pop(idx)
+
+        # Toàn bộ mũi tên đã thoát thành công
+        return True

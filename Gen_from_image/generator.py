@@ -1,8 +1,8 @@
 # File: generator.py
-# Cập nhật:
-# 1. Lấy min_width, max_width từ args.
-# 2. Truyền vào validator.
-# 3. Logic retry (tạo lại arrow) đã có sẵn trong vòng lặp 'retry', không cần sửa đổi cấu trúc.
+# Cập nhật Tối ưu hóa:
+# 1. Hoisting mảng p2_candidates ra ngoài vòng lặp retry.
+# 2. Loại bỏ .union() sao chép Set, thay bằng In-place add/remove O(1).
+# 3. Loại bỏ nối list bên trong vòng lặp.
 
 import random
 import progressbar
@@ -45,7 +45,6 @@ class HybridLevelGeneratorTestable:
         num_to_gen,
         avg_length,
     ):
-        # logger.info(f"Generating level in painted area...")
         if not active_layer: return [], start_arrow_id, "No active layer."
         editable_area = active_layer.editable_area
         if not editable_area: return [], start_arrow_id, "No editable area."
@@ -81,10 +80,8 @@ class HybridLevelGeneratorTestable:
         max_len = int(avg_length * 1.0)
         max_walk_len = max_len
 
-        # [UPDATE] Lấy config width từ Args
-        # Mặc định là None (không giới hạn) nếu không có trong args
-        cfg_min_width = getattr(self.args, 'min_width', 5)
-        cfg_max_width = getattr(self.args, 'max_width', 10)
+        cfg_min_width = getattr(self.args, 'min_width', 1)
+        cfg_max_width = getattr(self.args, 'max_width', 1000000)
 
         logger.debug(f"DEBUG CHECK: Min={cfg_min_width}, Max={cfg_max_width}")
 
@@ -96,46 +93,40 @@ class HybridLevelGeneratorTestable:
             self.progress_bar.update(i + 1)
             found_arrow = False
             
-            # --- VÒNG LẶP RETRY ---
-            # Nếu generate thất bại (do va chạm HOẶC do width constraint),
-            # code sẽ quay lại đầu vòng lặp này để thử tạo arrow mới.
-            # Dữ liệu `newly_generated_arrows` (các arrow đã tạo trước đó) vẫn được giữ nguyên.
-            for retry in range(max_retries_per_arrow):
-                p2_candidates = [pos for pos in gen_editable_area if pos not in gen_occupied_points]
-                if not p2_candidates: break
-                random.shuffle(p2_candidates)
-                start_p2 = None
-                p1 = None
-                found_start_pair = False
-                for p2_cand in p2_candidates:
-                    p1_candidates = []
-                    for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-                        p1_cand = (p2_cand[0] + dx, p2_cand[1] + dy)
-                        if p1_cand in gen_editable_area and p1_cand not in gen_occupied_points:
-                            p1_candidates.append(p1_cand)
-                    if p1_candidates:
-                        p1 = random.choice(p1_candidates)
-                        start_p2 = p2_cand
-                        found_start_pair = True
-                        break
-                if not found_start_pair: break
+            # --- TỐI ƯU HÓA HOISTING O(1) ---
+            available_points = gen_editable_area.difference(gen_occupied_points)
+            if not available_points: break
+            
+            valid_start_pairs = []
+            for p2 in available_points:
+                for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                    p1 = (p2[0] + dx, p2[1] + dy)
+                    if p1 in available_points:
+                        valid_start_pairs.append((p1, p2))
+            
+            if not valid_start_pairs: break
+            current_arrows_context = gen_arrows_on_board + newly_generated_arrows
 
-                temp_occupied = gen_occupied_points.union({p1})
+            for retry in range(max_retries_per_arrow):
+                p1, start_p2 = random.choice(valid_start_pairs)
+
+                # --- TỐI ƯU HÓA IN-PLACE O(1) ---
+                gen_occupied_points.add(p1)
                 path_body = self._perform_random_walk(
-                    start_p2, temp_occupied, gen_editable_area, gen_grid_w, gen_grid_h, max_len=max_walk_len - 1
+                    start_p2, gen_occupied_points, gen_editable_area, gen_grid_w, gen_grid_h, max_len=max_walk_len - 1
                 )
+                gen_occupied_points.remove(p1) # Hoàn tác ngay lập tức
+                # --------------------------------
+
                 path = [p1] + path_body
                 if not (min_len <= len(path) <= max_len): continue
 
                 direction = (p1[0] - start_p2[0], p1[1] - start_p2[1])
                 temp_arrow = Arrow(path, direction, active_layer.id, arrow_id_counter, default_color)
 
-                # --- CHECK GLOBAL CONSTRAINT ---
-                hypothetical_board = gen_arrows_on_board + newly_generated_arrows
                 validator.clear_cache()
-                
                 is_valid = validator.check_global_constraints(
-                    hypothetical_board, temp_arrow, gen_grid_w, gen_grid_h, 
+                    current_arrows_context, temp_arrow, gen_grid_w, gen_grid_h, 
                     min_width=cfg_min_width, 
                     max_width=cfg_max_width
                 )
@@ -145,9 +136,7 @@ class HybridLevelGeneratorTestable:
                     gen_occupied_points.update(path)
                     arrow_id_counter += 1
                     found_arrow = True
-                    break # Break retry loop -> Move to next arrow
-                
-                # Nếu is_valid == False: Vòng lặp for retry tiếp tục chạy -> Tạo arrow khác
+                    break
 
             if not found_arrow:
                 logger.warning(f"Could not find valid arrow {i+1}. Stopping.")
@@ -219,7 +208,6 @@ class HybridLevelGeneratorTestable:
     ):
         level_name = "unknown"
         if hasattr(self.args, "alter_item_name"): level_name = self.args.alter_item_name
-        # logger.debug(f"Lv: {level_name} | Generating ADVANCED level...")
         if not active_layer: return [], start_arrow_id, "No active layer."
         editable_area = active_layer.editable_area
         if not editable_area: return [], start_arrow_id, "No editable area."
@@ -254,53 +242,48 @@ class HybridLevelGeneratorTestable:
         max_len = int(avg_length * 1.0)
         max_walk_len = max_len
 
-        # [UPDATE] Lấy config width
         cfg_min_width = getattr(self.args, 'min_width', 3)
         cfg_max_width = getattr(self.args, 'max_width', 5)
 
         for i in range(num_to_gen):
-            # logger.info(f"Trying to generate (adv) arrow {i+1}/{num_to_gen}...")
             found_arrow = False
             
-            # --- VÒNG LẶP RETRY ---
-            for retry in range(100):
-                p2_candidates = [pos for pos in gen_editable_area if pos not in gen_occupied_points]
-                if not p2_candidates: break
-                random.shuffle(p2_candidates)
-                start_p2 = None
-                p1 = None
-                found_start_pair = False
-                for p2_cand in p2_candidates:
-                    p1_candidates = []
-                    for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-                        p1_cand = (p2_cand[0] + dx, p2_cand[1] + dy)
-                        if p1_cand in gen_editable_area and p1_cand not in gen_occupied_points:
-                            p1_candidates.append(p1_cand)
-                    if p1_candidates:
-                        p1 = random.choice(p1_candidates)
-                        start_p2 = p2_cand
-                        found_start_pair = True
-                        break
-                if not found_start_pair: break
+            # --- TỐI ƯU HÓA HOISTING O(1) ---
+            available_points = gen_editable_area.difference(gen_occupied_points)
+            if not available_points: break
+            
+            valid_start_pairs = []
+            for p2 in available_points:
+                for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                    p1 = (p2[0] + dx, p2[1] + dy)
+                    if p1 in available_points:
+                        valid_start_pairs.append((p1, p2))
+            
+            if not valid_start_pairs: break
+            current_arrows_context = gen_arrows_on_board + newly_generated_arrows
 
-                temp_occupied = gen_occupied_points.union({p1})
+            for retry in range(100):
+                p1, start_p2 = random.choice(valid_start_pairs)
+
+                # --- TỐI ƯU HÓA IN-PLACE O(1) ---
+                gen_occupied_points.add(p1)
                 path_body = self._perform_advance_walk_2(
-                    start_p2, p1, temp_occupied, gen_editable_area, gen_grid_w, gen_grid_h,
+                    start_p2, p1, gen_occupied_points, gen_editable_area, gen_grid_w, gen_grid_h,
                     max_len=max_walk_len - 1, straight_weight=straight_weight,
                     left_weight=left_weight, right_weight=right_weight, max_turns=max_turns
                 )
+                gen_occupied_points.remove(p1) # Hoàn tác
+                # --------------------------------
+
                 path = [p1] + path_body
                 if not (min_len <= len(path) <= max_len): continue
 
                 direction = (p1[0] - start_p2[0], p1[1] - start_p2[1])
                 temp_arrow = Arrow(path, direction, active_layer.id, arrow_id_counter, default_color)
 
-                # --- CHECK GLOBAL CONSTRAINT ---
-                hypothetical_board = gen_arrows_on_board + newly_generated_arrows
                 validator.clear_cache()
-                
                 is_valid = validator.check_global_constraints(
-                    hypothetical_board, temp_arrow, gen_grid_w, gen_grid_h,
+                    current_arrows_context, temp_arrow, gen_grid_w, gen_grid_h,
                     min_width=cfg_min_width,
                     max_width=cfg_max_width
                 )
@@ -310,8 +293,7 @@ class HybridLevelGeneratorTestable:
                     gen_occupied_points.update(path)
                     arrow_id_counter += 1
                     found_arrow = True
-                    # logger.debug(f"Success state with: Min-{cfg_min_width}")
-                    break # Break retry
+                    break
 
         if not newly_generated_arrows:
             return [], arrow_id_counter, f"Lv: {level_name} | Generation complete, but 0 valid arrows."
@@ -324,5 +306,4 @@ class HybridLevelGeneratorTestable:
         return final_arrows_to_add, arrow_id_counter, f"Lv: {level_name} | Successfully generated {len(final_arrows_to_add)} arrows!"
 
     def _generate_arrow_backtracking_strict(self, current_path, target_length, editable_area, occupied_points, gen_grid_w, gen_grid_h, weights, max_turns, current_turns, current_direction, validator, all_fixed_arrows):
-         # Logic cũ, chưa được sử dụng
          return None

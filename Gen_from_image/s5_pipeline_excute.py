@@ -121,7 +121,7 @@ def process_csv_row(row, original_args, styles_dict, log_path_str, progress_queu
         _args.length_step = row['length_step']
         _args.min_length = row['min_length']
         _args.size = (row['size_x'], row['size_y'])
-
+        _args.border = True 
         try:
             _args.min_width = row['min_width']
             _args.max_width = row['max_width']
@@ -477,9 +477,9 @@ if __name__ == "__main__":
     try:
         if MODE == "TUI_DASHBOARD":
             # Tải CSV (chỉ TUI mới cần)
-            args.level_set_path = Path(__file__).parent / "level_set" / "level_set_12_DC_pictures_2"
+            args.level_set_path = Path(__file__).parent / "level_set" / "level_set_13_UA_suport"
             # args.level_set_path = Path(__file__).parent / "level_set" / "level_set_4_csv_pictures"
-            args.csv_path = args.level_set_path / "[Data] levels - test dataframe_replay.csv"
+            args.csv_path = args.level_set_path / "[Data] levels - test dataframe.csv"
             args.csv = args.load_csv()
 
             print(args.level_set_path)

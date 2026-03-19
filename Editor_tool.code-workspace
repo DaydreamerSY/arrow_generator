@@ -23,6 +23,9 @@
 		{
 			"name": "README",
 			"path": "README"
+		},
+		{
+			"path": "User Simulator"
 		}
 	],
 	"settings": {

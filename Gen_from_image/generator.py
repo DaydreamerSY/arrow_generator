@@ -5,14 +5,12 @@
 # 3. Loại bỏ nối list bên trong vòng lặp.
 
 import random
-import progressbar
 from validator import Validator
 from helper import Arrow, Args
 from loguru import logger
 
 class HybridLevelGeneratorTestable:
     def __init__(self, args: Args):
-        self.progress_bar = progressbar.ProgressBar()
         self.args = args
 
     def _perform_random_walk(self, start_pos, all_occupied_points, editable_area, gen_grid_w, gen_grid_h, max_len=30):
@@ -85,12 +83,9 @@ class HybridLevelGeneratorTestable:
 
         logger.debug(f"DEBUG CHECK: Min={cfg_min_width}, Max={cfg_max_width}")
 
-        self.progress_bar = progressbar.ProgressBar(maxval=num_to_gen)
-        self.progress_bar.start()
         max_retries_per_arrow = 1000
 
         for i in range(num_to_gen):
-            self.progress_bar.update(i + 1)
             found_arrow = False
             
             # --- TỐI ƯU HÓA HOISTING O(1) ---

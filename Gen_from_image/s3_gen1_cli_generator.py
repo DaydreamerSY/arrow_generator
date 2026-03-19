@@ -1,7 +1,7 @@
 # File: cli_generator.py
 # ĐÃ CẬP NHẬT: Lặp lại ở min_length cho đến khi không thể tạo thêm.
 
-import json, sys, os
+import json, os
 from collections import defaultdict
 from loguru import logger
 
@@ -233,7 +233,7 @@ class ClientGenerator:
         # 1. Tải board (chỉ một lần)
         editable_area = self.load_board_from_file(self.args.input_file)
         if editable_area is None:
-            sys.exit(1)
+            raise FileNotFoundError(f"Không thể tải board từ: {self.args.input_file}")
         
         total_editable_cells = len(editable_area)
         logger.debug(f"Lv: {self.args.alter_item_name}  | Tổng số ô có thể vẽ: {total_editable_cells}")

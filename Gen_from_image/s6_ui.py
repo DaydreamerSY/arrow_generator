@@ -290,7 +290,7 @@ class MainWindow(QMainWindow):
         # Start Log
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         log_path = Path(__file__).parent / "logs" / f"debug_{timestamp}.log"
-        setup_loguru(str(log_path), tui_mode=True, disable_logging=False)
+        setup_loguru(str(log_path), enable_stderr=False)
         self.log_window.append(f"Starting pipeline. Log path: {log_path.name}")
 
         # Disable buttons

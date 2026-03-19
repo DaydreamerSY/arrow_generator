@@ -110,8 +110,7 @@ class Renderer:
             with open(input_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             
-            renderer = Renderer()
-            renderer._draw_generated_level(data, output_path)
+            self._draw_generated_level(data, output_path)
             
         except Exception as e:
             logger.trace(f"Đã xảy ra lỗi khi render: {e}")

@@ -234,31 +234,74 @@ class BoardState:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  Viewport Model
+#  Viewport Model — Two-State Zoom
+#
+#  Derived from actual game screenshots:
+#  - Zoom-in (example-zoom-in-max.jpeg): ~10×17 cells visible, clear arrows
+#  - Zoom-out (example-zoom-out-max.jpeg): entire board visible, small arrows
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def compute_viewport_regions(
+def compute_zoom_in_regions(
     board_w: int, board_h: int, cam: CameraConfig
 ) -> List[ViewportRegion]:
     """
-    Divide board into overlapping viewport regions.
-    If board fits in camera, return a single region.
+    Divide board into overlapping regions for zoom-in state.
+    Uses zoom_in_width × zoom_in_height as the camera window.
+    If board fits in zoom-in camera, return a single region.
     """
-    if board_w <= cam.camera_width and board_h <= cam.camera_height:
+    cw, ch = cam.zoom_in_width, cam.zoom_in_height
+    if board_w <= cw and board_h <= ch:
         return [ViewportRegion(0, 0, 0, 0, board_w, board_h)]
 
     regions = []
-    step_x = max(1, cam.camera_width - cam.viewport_overlap)
-    step_y = max(1, cam.camera_height - cam.viewport_overlap)
+    step_x = max(1, cw - cam.viewport_overlap)
+    step_y = max(1, ch - cam.viewport_overlap)
 
     ry = 0
     y0 = 0
     while y0 < board_h:
         rx = 0
         x0 = 0
-        y1 = min(y0 + cam.camera_height, board_h)
+        y1 = min(y0 + ch, board_h)
         while x0 < board_w:
-            x1 = min(x0 + cam.camera_width, board_w)
+            x1 = min(x0 + cw, board_w)
+            regions.append(ViewportRegion(rx, ry, x0, y0, x1, y1))
+            rx += 1
+            x0 += step_x
+            if x1 >= board_w:
+                break
+        ry += 1
+        y0 += step_y
+        if y1 >= board_h:
+            break
+
+    return regions
+
+
+def compute_zoom_out_regions(
+    board_w: int, board_h: int, cam: CameraConfig
+) -> List[ViewportRegion]:
+    """
+    Compute viewport regions for zoom-out state.
+    If board fits within zoom_out_width × zoom_out_height → single region.
+    Otherwise, divide into overlapping regions (super-large boards still need panning).
+    """
+    cow, coh = cam.zoom_out_width, cam.zoom_out_height
+    if board_w <= cow and board_h <= coh:
+        return [ViewportRegion(0, 0, 0, 0, board_w, board_h)]
+
+    regions = []
+    step_x = max(1, cow - cam.viewport_overlap)
+    step_y = max(1, coh - cam.viewport_overlap)
+
+    ry = 0
+    y0 = 0
+    while y0 < board_h:
+        rx = 0
+        x0 = 0
+        y1 = min(y0 + coh, board_h)
+        while x0 < board_w:
+            x1 = min(x0 + cow, board_w)
             regions.append(ViewportRegion(rx, ry, x0, y0, x1, y1))
             rx += 1
             x0 += step_x
@@ -361,8 +404,12 @@ def compute_level_metrics(board: Board) -> LevelMetrics:
 class PlayerSimulator:
     """
     Simulates a single player playing a single level.
-    Implements the full step-timeline formula with viewport, eye, and
-    cognitive models from discuss.md.
+    Implements the full step-timeline formula with two-state zoom viewport,
+    eye model, and cognitive models from discuss.md.
+
+    Two-state zoom:
+      - Zoom-in: player sees ~10×17 cells (region-based panning needed for large boards)
+      - Zoom-out: player sees entire board (no panning, but arrows small → harder eval)
     """
 
     def __init__(
@@ -378,11 +425,21 @@ class PlayerSimulator:
         self.run_id = run_id
         self.rng = random.Random(sim_config.random_seed + run_id)
 
-        # Build viewport regions
-        self.regions = compute_viewport_regions(
+        # Build viewport regions for both zoom states
+        self.zoom_in_regions = compute_zoom_in_regions(
             board.width, board.height, sim_config.camera
         )
-        self.single_viewport = len(self.regions) == 1
+        self.zoom_out_regions = compute_zoom_out_regions(
+            board.width, board.height, sim_config.camera
+        )
+
+        # Does the board fit in zoom-in camera? (no panning needed even zoomed in)
+        self.board_fits_zoomed_in = len(self.zoom_in_regions) == 1
+        # Does the board fit in zoom-out camera? (super-large boards may not)
+        self.board_fits_zoomed_out = len(self.zoom_out_regions) == 1
+
+        # Zoom state: "in" or "out"
+        self.zoom_state = profile.initial_zoom
 
         # State
         self.board_state = BoardState(board)
@@ -392,14 +449,50 @@ class PlayerSimulator:
         self.steps: List[StepEvent] = []
         self.mistake_count = 0
         self.solve_iterations = 0
-        self.current_region_idx = 0
+        self.current_region_idx = 0        # zoom-in region index
+        self.current_zo_region_idx = 0      # zoom-out region index
         self.remembered_regions: Set[int] = set()
+
+    # ── Zoom state helpers ────────────────────────────────────────────────
+    def _is_zoomed_out(self) -> bool:
+        return self.zoom_state == "out"
+
+    def _switch_zoom(self, target: str):
+        """Switch zoom state, adding transition time."""
+        if self.zoom_state != target:
+            self.zoom_state = target
+            self.total_time += self.cfg.camera.zoom_transition_time * self._fatigue()
+
+    # ── Zoom-dependent multipliers ────────────────────────────────────────
+    def _zoom_eval_multiplier(self) -> float:
+        """Eval time multiplier based on zoom state."""
+        if self._is_zoomed_out() and not self.board_fits_zoomed_in:
+            return self.cfg.camera.zoom_out_eval_multiplier
+        return 1.0
+
+    def _zoom_head_find_multiplier(self) -> float:
+        """Head-finding multiplier (small arrows harder to parse)."""
+        if self._is_zoomed_out() and not self.board_fits_zoomed_in:
+            return self.cfg.camera.zoom_out_head_find_multiplier
+        return 1.0
+
+    def _zoom_miss_bonus(self) -> float:
+        """Extra miss probability when zoomed out."""
+        if self._is_zoomed_out() and not self.board_fits_zoomed_in:
+            return self.cfg.camera.zoom_out_miss_bonus
+        return 0.0
+
+    def _zoom_scan_speed(self) -> float:
+        """Scan speed factor (< 1.0 means faster per-arrow scan when zoomed out)."""
+        if self._is_zoomed_out() and not self.board_fits_zoomed_in:
+            return self.cfg.camera.zoom_out_scan_speed
+        return 1.0
 
     # ── Fatigue multiplier ────────────────────────────────────────────────
     def _fatigue(self) -> float:
         return self.p.fatigue_factor ** self.step_index
 
-    # ── FOV shifts needed within current viewport ─────────────────────────
+    # ── FOV shifts needed within a viewport region ────────────────────────
     def _fov_shifts(self, region: ViewportRegion) -> int:
         rw = region.x1 - region.x0
         rh = region.y1 - region.y0
@@ -413,23 +506,22 @@ class PlayerSimulator:
         """Time to visually scan all arrows in a viewport region."""
         fov_shifts = self._fov_shifts(region)
         saccade_total = fov_shifts * self.cfg.eye.saccade_time
-        scan_total = n_arrows * self.p.scan_time_per_arrow
+        scan_total = n_arrows * self.p.scan_time_per_arrow * self._zoom_scan_speed()
         if is_rescan:
             scan_total *= self.p.rescan_time_ratio
         return saccade_total + scan_total
 
     # ── Compute time to evaluate one arrow ────────────────────────────────
-    def _eval_arrow_time(self, arrow: Arrow) -> float:
+    def _eval_arrow_time(self, arrow: Arrow, region: ViewportRegion) -> float:
         """Time to find head, trace exit path, and make decision."""
         head_time = (
-            self.p.head_find_time_base
+            self.p.head_find_time_base * self._zoom_head_find_multiplier()
             + arrow.length * self.cfg.arrow_eval.head_find_time_per_cell
         )
         trace_dist, is_blocked = self.board_state.trace_distance(arrow)
         trace_time = trace_dist * self.cfg.arrow_eval.trace_time_per_cell
 
         # Does trace exceed current viewport?
-        region = self.regions[self.current_region_idx]
         rw = region.x1 - region.x0
         rh = region.y1 - region.y0
         max_visible = max(rw, rh)
@@ -447,26 +539,29 @@ class PlayerSimulator:
         # Recheck penalty
         recheck_extra = 0.0
         if self.rng.random() < self.p.recheck_probability:
-            recheck_extra = head_time * 0.5  # re-scan costs half
+            recheck_extra = head_time * 0.5
 
-        return head_time + trace_time + trace_pan + block_time + decision_time + recheck_extra
+        base = head_time + trace_time + trace_pan + block_time + decision_time + recheck_extra
+        return base * self._zoom_eval_multiplier()
+
+    # ── Effective miss probability ────────────────────────────────────────
+    def _effective_miss_prob(self) -> float:
+        return min(0.95, self.p.miss_probability + self._zoom_miss_bonus())
 
     # ── Tap action ────────────────────────────────────────────────────────
-    def _do_tap(self, arrow: Arrow, is_solvable: bool) -> StepEvent:
+    def _do_tap(self, arrow: Arrow, is_solvable: bool,
+                region: ViewportRegion) -> StepEvent:
         """Execute a tap on an arrow. Returns the step event."""
-        eval_time = self._eval_arrow_time(arrow)
+        eval_time = self._eval_arrow_time(arrow, region)
         tap_time = self.p.tap_time
 
         is_mistake = False
         mistake_extra = 0.0
 
         if is_solvable:
-            # Occasionally player taps wrong even on solvable
-            # (modeled as fumble, very rare)
             self.board_state.remove_arrow(arrow.arrow_id)
             self.frustration = max(0, self.frustration - self.p.frustration_decay_after_solve)
         else:
-            # Mistake tap on non-solvable arrow
             is_mistake = True
             mistake_extra = self.p.mistake_penalty
             self.mistake_count += 1
@@ -474,13 +569,14 @@ class PlayerSimulator:
         fatigue_mult = self._fatigue()
         step_time = (eval_time + tap_time + mistake_extra) * fatigue_mult
 
+        zoom_tag = "ZO" if self._is_zoomed_out() else "ZI"
         event = StepEvent(
             step_index=self.step_index,
             arrow_id=arrow.arrow_id,
             time_ms=round(step_time, 1),
             is_mistake=is_mistake,
             phase_detail=(
-                f"eval={eval_time:.0f}ms tap={tap_time:.0f}ms "
+                f"[{zoom_tag}] eval={eval_time:.0f}ms tap={tap_time:.0f}ms "
                 f"{'MISS ' if is_mistake else ''}fatigue=x{fatigue_mult:.3f}"
             ),
         )
@@ -498,7 +594,6 @@ class PlayerSimulator:
         if depth >= self.p.max_recursion_depth:
             return False
 
-        # Find arrow with fewest blockers ("nearly solvable")
         candidates = []
         for a in self.board_state.remaining.values():
             n_blockers = self.board_state.count_blockers(a)
@@ -511,26 +606,118 @@ class PlayerSimulator:
         candidates.sort(key=lambda x: x[0])
         target = candidates[0][1]
 
-        # Think time for recursion
         think_time = self.p.recursion_think_time * self._fatigue()
         self.total_time += think_time
 
-        # Find the blocker arrow
         blocker = self.board_state.find_blocker(target)
         if blocker is None:
             return False
 
-        # Is the blocker solvable?
         if self.board_state.is_solvable(blocker):
-            self._do_tap(blocker, is_solvable=True)
+            # Use current active region for eval
+            region = self._current_active_region()
+            self._do_tap(blocker, is_solvable=True, region=region)
             return True
         else:
-            # Recurse deeper
             return self._try_recursive_unblock(depth + 1)
+
+    def _current_active_region(self) -> ViewportRegion:
+        """Return the current viewport region based on zoom state."""
+        if self._is_zoomed_out():
+            return self.zoom_out_regions[min(self.current_zo_region_idx, len(self.zoom_out_regions) - 1)]
+        return self.zoom_in_regions[self.current_region_idx]
+
+    # ── Scan a single region, find and tap solvable arrows ────────────────
+    def _scan_and_tap_region(self, region: ViewportRegion) -> bool:
+        """
+        Scan a region for solvable arrows and batch-tap them.
+        Returns True if any arrow was tapped.
+        """
+        visible = arrows_in_region(self.board_state.remaining, region)
+        if not visible:
+            return False
+
+        visible = sort_arrows_by_scan(visible, self.p.scan_direction)
+
+        # Scan time
+        scan_time = self._scan_region_time(len(visible), region)
+        self.total_time += scan_time * self._fatigue()
+
+        # Find solvable
+        solvable_here = [a for a in visible if self.board_state.is_solvable(a)]
+
+        # Miss probability (zoom-adjusted)
+        miss_prob = self._effective_miss_prob()
+        actually_found = [a for a in solvable_here if self.rng.random() >= miss_prob]
+
+        if not actually_found:
+            # Mistake: might tap non-solvable
+            if visible and self.rng.random() < self.p.mistake_rate:
+                non_solvable = [a for a in visible if not self.board_state.is_solvable(a)]
+                if non_solvable:
+                    victim = self.rng.choice(non_solvable)
+                    self._do_tap(victim, is_solvable=False, region=region)
+            return False
+
+        # ── Batch tap ──────────────────────────────────────────────
+        found_any = False
+        batch_count = 0
+        while actually_found and batch_count < self.p.max_batch_before_pan:
+            target = actually_found.pop(0)
+            if target.arrow_id not in self.board_state.remaining:
+                continue
+            if not self.board_state.is_solvable(target):
+                continue
+
+            # When zoomed out, player might zoom in before tapping
+            if self._is_zoomed_out() and not self.board_fits_zoomed_in:
+                if self.rng.random() < self.p.zoom_in_to_tap_prob:
+                    self._switch_zoom("in")
+                    # Find the zoom-in region containing this arrow's head
+                    for ri, r in enumerate(self.zoom_in_regions):
+                        if r.x0 <= target.head_x < r.x1 and r.y0 <= target.head_y < r.y1:
+                            self.current_region_idx = ri
+                            region = r
+                            break
+
+            self._do_tap(target, is_solvable=True, region=region)
+            found_any = True
+            batch_count += 1
+            self.solve_iterations += 1
+
+            # Quick rescan
+            if batch_count < self.p.max_batch_before_pan:
+                new_visible = arrows_in_region(self.board_state.remaining, region)
+                rescan_time = self._scan_region_time(
+                    len(new_visible), region, is_rescan=True
+                )
+                self.total_time += rescan_time * self._fatigue()
+
+                new_solvable = [
+                    a for a in new_visible
+                    if self.board_state.is_solvable(a)
+                ]
+                miss_prob = self._effective_miss_prob()
+                actually_found = [
+                    a for a in new_solvable
+                    if self.rng.random() >= miss_prob
+                ]
+
+        return found_any
 
     # ── Main simulation loop ──────────────────────────────────────────────
     def simulate(self) -> SimulationResult:
-        """Run the full simulation. Returns result with timing breakdown."""
+        """
+        Run the full simulation with two-state zoom model.
+
+        Flow:
+        1. Initial board scan (zoom-out overview or zoom-in first region)
+        2. Main loop:
+           a. If zoomed out → scan entire board as one region
+           b. If zoomed in → iterate through zoom-in regions with panning
+           c. If nothing found → consider switching zoom state
+           d. If still stuck → recursive unblock / memory / fallback
+        """
 
         # Initial board scan
         self.total_time += self.p.board_scan_time
@@ -538,127 +725,95 @@ class PlayerSimulator:
         while self.board_state.remaining:
             found_any = False
 
-            # Iterate through viewport regions
-            region_order = list(range(len(self.regions)))
-            if self.p.scan_direction == "rtl_btt":
-                region_order.reverse()
+            if self._is_zoomed_out() or self.board_fits_zoomed_in:
+                # ── ZOOM-OUT STATE (or small board) ───────────────────
+                if self.board_fits_zoomed_in:
+                    # Small board: single region, no zoom distinction
+                    found_any = self._scan_and_tap_region(self.zoom_in_regions[0])
+                elif self.board_fits_zoomed_out:
+                    # Board fits in zoom-out viewport: single region scan
+                    found_any = self._scan_and_tap_region(self.zoom_out_regions[0])
+                else:
+                    # Super-large board: even zoom-out needs panning
+                    zo_order = list(range(len(self.zoom_out_regions)))
+                    if self.p.scan_direction == "rtl_btt":
+                        zo_order.reverse()
+                    for zo_idx in zo_order:
+                        self.current_zo_region_idx = zo_idx
+                        if zo_idx != zo_order[0]:
+                            self.total_time += self.cfg.camera.pan_time * self._fatigue()
+                        if self._scan_and_tap_region(self.zoom_out_regions[zo_idx]):
+                            found_any = True
 
-            for ridx in region_order:
-                self.current_region_idx = ridx
-                region = self.regions[ridx]
+                if not found_any and not self.board_fits_zoomed_in:
+                    # Nothing found zoomed out → zoom in for closer look
+                    self._switch_zoom("in")
 
-                # Pan time (skip for first region or single viewport)
-                if ridx != region_order[0] and not self.single_viewport:
-                    # Check if player zooms out instead of panning
-                    if self.rng.random() < self.p.zoom_out_probability:
-                        self.total_time += self.cfg.camera.zoom_out_time
-                    else:
-                        self.total_time += self.cfg.camera.pan_time
+            else:
+                # ── ZOOM-IN STATE ─────────────────────────────────────
+                region_order = list(range(len(self.zoom_in_regions)))
+                if self.p.scan_direction == "rtl_btt":
+                    region_order.reverse()
 
-                # Get arrows visible in this region
-                visible = arrows_in_region(self.board_state.remaining, region)
-                if not visible:
-                    continue
+                for ridx in region_order:
+                    self.current_region_idx = ridx
+                    region = self.zoom_in_regions[ridx]
 
-                # Sort by scan direction
-                visible = sort_arrows_by_scan(visible, self.p.scan_direction)
+                    # Pan time between regions
+                    if ridx != region_order[0]:
+                        self.total_time += self.cfg.camera.pan_time * self._fatigue()
 
-                # Scan time for this region
-                scan_time = self._scan_region_time(len(visible), region)
-                self.total_time += scan_time * self._fatigue()
+                    region_found = self._scan_and_tap_region(region)
+                    if region_found:
+                        found_any = True
+                        self.remembered_regions.add(ridx)
 
-                # Find solvable arrows in this region
-                solvable_here = [a for a in visible if self.board_state.is_solvable(a)]
+                # After full scan of all regions, consider zoom out for survey
+                if not found_any and self.rng.random() < self.p.zoom_out_survey_prob:
+                    self._switch_zoom("out")
+                    continue  # retry with zoom-out view
 
-                # Miss probability: player might skip some solvable arrows
-                actually_found = []
-                for a in solvable_here:
-                    if self.rng.random() >= self.p.miss_probability:
-                        actually_found.append(a)
-
-                if not actually_found:
-                    # Mistake: might tap a non-solvable
-                    if visible and self.rng.random() < self.p.mistake_rate:
-                        non_solvable = [a for a in visible if not self.board_state.is_solvable(a)]
-                        if non_solvable:
-                            victim = self.rng.choice(non_solvable)
-                            self._do_tap(victim, is_solvable=False)
-                    continue
-
-                # ── Batch tap within this region ──────────────────────
-                batch_count = 0
-                while actually_found and batch_count < self.p.max_batch_before_pan:
-                    target = actually_found.pop(0)
-                    if target.arrow_id not in self.board_state.remaining:
-                        continue
-
-                    # Double-check still solvable (board changed)
-                    if not self.board_state.is_solvable(target):
-                        continue
-
-                    self._do_tap(target, is_solvable=True)
-                    found_any = True
-                    batch_count += 1
-                    self.solve_iterations += 1
-
-                    # Quick rescan for newly solvable arrows
-                    if batch_count < self.p.max_batch_before_pan:
-                        new_visible = arrows_in_region(
-                            self.board_state.remaining, region
-                        )
-                        rescan_time = self._scan_region_time(
-                            len(new_visible), region, is_rescan=True
-                        )
-                        self.total_time += rescan_time * self._fatigue()
-
-                        new_solvable = [
-                            a for a in new_visible
-                            if self.board_state.is_solvable(a)
-                        ]
-                        actually_found = [
-                            a for a in new_solvable
-                            if self.rng.random() >= self.p.miss_probability
-                        ]
-
-                if found_any:
-                    self.remembered_regions.add(ridx)
-
-            # If no solvable found in any region → try recursive unblock
+            # ── No solvable found → recovery strategies ───────────────
             if not found_any:
                 self.frustration += self.p.frustration_buildup_rate
 
+                # Try recursive unblock
                 if (self.frustration < 1.0
                         and self.rng.random() < self.p.recursive_solve_probability):
                     solved = self._try_recursive_unblock()
                     if solved:
                         continue
 
-                # Memory: try a remembered region
+                # Memory: try a remembered region (zoom in first)
                 if (self.remembered_regions
                         and self.rng.random() < self.p.memory_probability):
+                    if self._is_zoomed_out():
+                        self._switch_zoom("in")
                     mem_region = self.rng.choice(list(self.remembered_regions))
                     self.current_region_idx = mem_region
                     self.total_time += self.cfg.camera.pan_time * self._fatigue()
-                    # Will retry in next outer loop iteration
                     continue
 
-                # Fallback: random pan + re-scan
-                self.total_time += self.cfg.camera.pan_time * 2 * self._fatigue()
+                # Fallback: zoom-out survey if not already, or random pan
+                if not self._is_zoomed_out() and not self.board_fits_zoomed_in:
+                    self._switch_zoom("out")
+                    self.total_time += self.p.board_scan_time * self._fatigue()
+                else:
+                    # Already zoomed out or small board → random pan
+                    self.total_time += self.cfg.camera.pan_time * 2 * self._fatigue()
 
-                # Safety: if truly stuck (all arrows blocked, no recursion works)
-                # force-solve one arrow to avoid infinite loop
+                # Safety: force-solve one to avoid infinite loop
                 solvable_global = self.board_state.get_solvable()
                 if solvable_global:
-                    # Player eventually finds one
                     extra_search_time = (
                         self.p.board_scan_time * 3 * self._fatigue()
                     )
                     self.total_time += extra_search_time
                     target = self.rng.choice(solvable_global)
-                    self._do_tap(target, is_solvable=True)
+                    region = self._current_active_region()
+                    self._do_tap(target, is_solvable=True, region=region)
                 else:
-                    # Level truly stuck (invalid level) — break to prevent infinite
-                    break
+                    break  # truly stuck (invalid level)
 
         return SimulationResult(
             level_id=self.board.level_id,

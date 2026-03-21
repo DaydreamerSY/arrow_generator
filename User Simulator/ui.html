@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arrow Escape — User Simulator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.0/plotly.min.js"></script>
+<style>
+  :root {
+    --bg: #f8f9fa; --card: #fff; --border: #dee2e6; --accent: #4a6fa5;
+    --accent-light: #e8edf4; --text: #2d3436; --text-muted: #6c757d;
+    --success: #27ae60; --warning: #f39c12; --danger: #e74c3c;
+    --radius: 10px; --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+
+  /* Layout */
+  .app { max-width: 1200px; margin: 0 auto; padding: 20px; }
+  .header { text-align: center; margin-bottom: 24px; }
+  .header h1 { font-size: 24px; color: var(--accent); }
+  .header p { color: var(--text-muted); font-size: 14px; }
+
+  .grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; }
+  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+
+  /* Cards */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  .card h2 { font-size: 16px; color: var(--accent); margin-bottom: 12px; border-bottom: 2px solid var(--accent-light); padding-bottom: 8px; }
+  .card h3 { font-size: 14px; color: var(--text-muted); margin: 12px 0 6px; }
+
+  /* Form elements */
+  label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 3px; }
+  input[type="number"], input[type="text"], select {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
+    font-size: 14px; background: #fff; transition: border-color 0.2s;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  .field { margin-bottom: 10px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+  /* Buttons */
+  .btn { padding: 10px 20px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #3d5d8a; }
+  .btn-primary:disabled { background: #a0b4cc; cursor: not-allowed; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-outline:hover { background: var(--accent-light); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+  /* Profile pills */
+  .profile-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .pill { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 2px solid var(--border); background: #fff; transition: all 0.2s; }
+  .pill.active { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+  .pill:hover { border-color: var(--accent); }
+
+  /* Mix sliders */
+  .mix-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .mix-row label { width: 100px; margin: 0; font-size: 12px; }
+  .mix-row input[type="range"] { flex: 1; }
+  .mix-row .mix-val { width: 40px; text-align: right; font-size: 12px; font-weight: 600; }
+
+  /* Results */
+  .results-area { min-height: 400px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--accent-light); color: var(--accent); padding: 8px 10px; text-align: left; font-weight: 600; position: sticky; top: 0; }
+  td { padding: 6px 10px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: #f0f4f8; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .good { color: var(--success); }
+  .warn { color: var(--warning); }
+  .bad { color: var(--danger); }
+
+  /* Status */
+  .status { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; }
+  .status-info { background: #e8f4fd; color: #1a73e8; }
+  .status-running { background: #fff3cd; color: #856404; }
+  .status-done { background: #d4edda; color: #155724; }
+  .status-error { background: #f8d7da; color: #721c24; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 2px; margin-bottom: 16px; }
+  .tab { padding: 8px 16px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 13px; font-weight: 500; }
+  .tab:first-child { border-radius: 6px 0 0 6px; }
+  .tab:last-child { border-radius: 0 6px 6px 0; }
+  .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .table-wrap { max-height: 500px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; }
+
+  /* Plotly overrides */
+  .js-plotly-plot .plotly .modebar { opacity: 0.6; }
+  .js-plotly-plot .plotly .modebar:hover { opacity: 1; }
+
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .summary-card { text-align: center; padding: 12px; background: var(--accent-light); border-radius: 8px; }
+  .summary-card .value { font-size: 22px; font-weight: 700; color: var(--accent); }
+  .summary-card .label { font-size: 11px; color: var(--text-muted); }
+
+  .field-hint { font-size: 11px; color: var(--text-muted); margin-top: 2px; display: block; }
+  .hidden { display: none; }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 6px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>Arrow Escape — User Simulator</h1>
+    <p>Configure player profiles, run simulation, compare with real data</p>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT PANEL: Config -->
+    <div class="config-panel">
+
+      <!-- Data Version Selection -->
+      <div class="card">
+        <h2>📂 Data Version</h2>
+        <div class="field">
+          <label>Version</label>
+          <select id="versionSelect" onchange="onVersionChange()">
+            <option value="">Loading...</option>
+          </select>
+          <span class="field-hint" id="versionHint"></span>
+        </div>
+        <div id="reportsList" style="margin-top:8px;display:none;">
+          <label style="font-size:12px;color:var(--text-muted);">Reports in this version</label>
+          <div id="reportsContent" style="margin-top:4px;"></div>
+        </div>
+        <div id="glossaryToggle" style="margin-top:10px;">
+          <button class="btn btn-outline btn-sm" onclick="toggleGlossary()">📖 Show Glossary</button>
+        </div>
+        <div id="glossaryPanel" class="hidden" style="margin-top:10px;padding:10px;background:#f5f7fa;border-radius:6px;font-size:12px;line-height:1.8;border-left:3px solid var(--accent);">
+          <div id="glossaryContent" style="white-space:pre-line;"></div>
+        </div>
+      </div>
+
+      <!-- Simulation Settings -->
+      <div class="card">
+        <h2>Simulation Settings</h2>
+        <div class="field-row">
+          <div class="field">
+            <label>Cohort Size</label>
+            <input type="number" id="cohort" value="500" min="10" max="10000" step="100">
+          </div>
+          <div class="field">
+            <label>Seed</label>
+            <input type="number" id="seed" value="42">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Level From</label>
+            <input type="number" id="levelFrom" value="1" min="1" max="9999">
+          </div>
+          <div class="field">
+            <label>Level To</label>
+            <input type="number" id="levelTo" value="30" min="1" max="9999">
+          </div>
+        </div>
+        <div class="field">
+          <label>Mode</label>
+          <select id="mode">
+            <option value="level" selected>Per-Level (no churn)</option>
+            <option value="cohort">Cohort (with churn)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Player Mix -->
+      <div class="card">
+        <h2>Player Mix</h2>
+        <div class="mix-row"><label>Methodical</label><input type="range" id="mix_methodical" min="0" max="100" value="32" oninput="updateMix()"><span class="mix-val" id="mix_methodical_v">32%</span></div>
+        <div class="mix-row"><label>Scanner</label><input type="range" id="mix_scanner" min="0" max="100" value="22" oninput="updateMix()"><span class="mix-val" id="mix_scanner_v">22%</span></div>
+        <div class="mix-row"><label>Comfortable</label><input type="range" id="mix_comfortable" min="0" max="100" value="33" oninput="updateMix()"><span class="mix-val" id="mix_comfortable_v">33%</span></div>
+        <div class="mix-row"><label>Struggler</label><input type="range" id="mix_struggler" min="0" max="100" value="13" oninput="updateMix()"><span class="mix-val" id="mix_struggler_v">13%</span></div>
+        <div style="font-size:12px;color:var(--text-muted);text-align:right;margin-top:4px;">Total: <strong id="mixTotal">100%</strong></div>
+      </div>
+
+      <!-- Profile Editor -->
+      <div class="card">
+        <h2>Profile Editor</h2>
+        <div class="profile-pills">
+          <span class="pill active" onclick="selectProfile('methodical')">Methodical</span>
+          <span class="pill" onclick="selectProfile('scanner')">Scanner</span>
+          <span class="pill" onclick="selectProfile('comfortable')">Comfortable</span>
+          <span class="pill" onclick="selectProfile('struggler')">Struggler</span>
+        </div>
+        <div id="profileFields">
+          <h3>Timing (ms)</h3>
+          <div class="field-row-3">
+            <div class="field"><label>Scan/arrow</label><input type="number" id="p_scan" step="10"></div>
+            <div class="field"><label>Decision</label><input type="number" id="p_decision" step="10"></div>
+            <div class="field"><label>Tap</label><input type="number" id="p_tap" step="10"></div>
+          </div>
+          <h3>Error Rates</h3>
+          <div class="field-row-3">
+            <div class="field"><label>Miss prob</label><input type="number" id="p_miss" step="0.01" min="0" max="1"></div>
+            <div class="field"><label>Mistake rate</label><input type="number" id="p_mistake" step="0.01" min="0" max="1"></div>
+            <div class="field"><label>Fatigue</label><input type="number" id="p_fatigue" step="0.001" min="1"></div>
+          </div>
+          <h3>Behavior</h3>
+          <div class="field-row">
+            <div class="field"><label>Frustration rate</label><input type="number" id="p_frustration" step="0.005" min="0"></div>
+            <div class="field"><label>Booster willingness</label><input type="number" id="p_booster" step="0.1" min="0" max="1"></div>
+          </div>
+        </div>
+        <div style="margin-top:10px;">
+          <button class="btn btn-outline btn-sm" onclick="saveProfile()">Save Profile Changes</button>
+          <button class="btn btn-outline btn-sm" onclick="resetProfiles()">Reset All</button>
+        </div>
+      </div>
+
+      <!-- Booster Config -->
+      <div class="card">
+        <h2>Booster Config</h2>
+        <div class="field-row-3">
+          <div class="field"><label>Hint /att</label><input type="number" id="b_hint" value="5" min="0" max="99"></div>
+          <div class="field"><label>Scissors /att</label><input type="number" id="b_scissors" value="5" min="0" max="99"></div>
+          <div class="field"><label>Wand /att</label><input type="number" id="b_wand" value="5" min="0" max="99"></div>
+        </div>
+        <div class="field">
+          <label><input type="checkbox" id="b_enabled" checked> Boosters enabled</label>
+        </div>
+      </div>
+
+      <!-- Level Overhead -->
+      <div class="card">
+        <h2>Level Overhead</h2>
+        <div class="field-row">
+          <div class="field"><label>Load time (ms)</label><input type="number" id="o_load" value="1500" step="100"></div>
+          <div class="field"><label>Win celebration (ms)</label><input type="number" id="o_win" value="2000" step="100"></div>
+        </div>
+      </div>
+
+      <!-- Run -->
+      <button class="btn btn-primary" id="runBtn" onclick="runSimulation()" style="width:100%;margin-top:8px;">
+        Run Simulation
+      </button>
+    </div>
+
+    <!-- RIGHT PANEL: Results -->
+    <div class="results-area">
+      <div class="status status-info" id="statusBar">
+        Configure settings and click "Run Simulation" to start.
+      </div>
+
+      <!-- Summary -->
+      <div id="summarySection" class="hidden">
+        <div class="summary-grid">
+          <div class="summary-card"><div class="value" id="s_levels">-</div><div class="label">Levels</div></div>
+          <div class="summary-card"><div class="value" id="s_timeRatio">-</div><div class="label">Avg Time Ratio</div></div>
+          <div class="summary-card"><div class="value" id="s_winDiff">-</div><div class="label">Win Rate Diff</div></div>
+          <div class="summary-card"><div class="value" id="s_attDiff">-</div><div class="label">Attempt Diff</div></div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div id="resultTabs" class="hidden">
+        <div class="tabs">
+          <div class="tab active" onclick="showTab('chart')">Chart</div>
+          <div class="tab" onclick="showTab('table')">Table</div>
+          <div class="tab" onclick="showTab('config')">Config JSON</div>
+        </div>
+
+        <div id="tab_chart">
+          <div class="card">
+            <h2>Avg Time: Sim vs Feed</h2>
+            <div id="plotlyTimeChart" style="width:100%;height:350px;"></div>
+          </div>
+          <div class="card">
+            <h2>Time Ratio per Level (sim/feed)</h2>
+            <div id="plotlyRatioChart" style="width:100%;height:300px;"></div>
+          </div>
+          <div class="card">
+            <h2>Win Rate: Sim vs Feed</h2>
+            <div id="plotlyWinRateChart" style="width:100%;height:300px;"></div>
+          </div>
+        </div>
+
+        <div id="tab_table" class="hidden">
+          <div class="card">
+            <div class="table-wrap">
+              <table id="resultsTable">
+                <thead><tr>
+                  <th>Level</th><th>Board</th><th>Arrows</th>
+                  <th class="num">Sim Avg</th><th class="num">Feed Avg</th><th class="num">Ratio</th>
+                  <th class="num">Sim WR</th><th class="num">Feed WR</th>
+                  <th class="num">Sim Att</th><th class="num">Feed Att</th>
+                </tr></thead>
+                <tbody id="resultsBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab_config" class="hidden">
+          <div class="card">
+            <h2>Current Configuration (JSON)</h2>
+            <pre id="configJson" style="font-size:12px;overflow:auto;max-height:400px;background:#f5f5f5;padding:12px;border-radius:6px;"></pre>
+            <button class="btn btn-outline btn-sm" onclick="copyConfig()" style="margin-top:8px;">Copy to Clipboard</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Dataset state ─────────────────────────────────────────
+let versionsInfo = [];
+let glossaryVisible = false;
+
+async function loadDatasets() {
+  try {
+    const resp = await fetch('/api/datasets');
+    if (!resp.ok) throw new Error('Failed to load datasets');
+    const data = await resp.json();
+    versionsInfo = data.versions || [];
+
+    const sel = document.getElementById('versionSelect');
+    sel.innerHTML = '';
+    versionsInfo.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.name;
+      opt.textContent = v.name;
+      sel.appendChild(opt);
+    });
+
+    onVersionChange();
+  } catch(e) {
+    // Fallback if server not running
+    const sel = document.getElementById('versionSelect');
+    sel.innerHTML = '<option value="current">current</option><option value="v1.8.0">v1.8.0</option>';
+  }
+}
+
+function onVersionChange() {
+  const name = document.getElementById('versionSelect').value;
+  const info = versionsInfo.find(v => v.name === name);
+
+  if (info) {
+    // Hint line
+    const parts = [`${info.test_levels} levels`];
+    if (info.has_feed) parts.push('feed data');
+    if (info.reports && info.reports.length) parts.push(`${info.reports.length} report${info.reports.length>1?'s':''}`);
+    document.getElementById('versionHint').textContent = parts.join(' · ');
+
+    // Glossary
+    document.getElementById('glossaryContent').textContent = info.glossary || 'No glossary available.';
+
+    // Reports list
+    const reportsEl = document.getElementById('reportsList');
+    const reportsContent = document.getElementById('reportsContent');
+    if (info.reports && info.reports.length) {
+      reportsContent.innerHTML = info.reports.map(r => {
+        const icon = r.endsWith('.md') ? '📄' : '📊';
+        return `<div style="font-size:12px;padding:2px 0;">${icon} ${r}</div>`;
+      }).join('');
+      reportsEl.style.display = 'block';
+    } else {
+      reportsContent.innerHTML = '<div style="font-size:12px;color:var(--text-muted);">No reports yet — run a simulation first.</div>';
+      reportsEl.style.display = 'block';
+    }
+  } else {
+    document.getElementById('versionHint').textContent = '';
+    document.getElementById('glossaryContent').textContent = '';
+    document.getElementById('reportsList').style.display = 'none';
+  }
+}
+
+function toggleGlossary() {
+  glossaryVisible = !glossaryVisible;
+  document.getElementById('glossaryPanel').classList.toggle('hidden', !glossaryVisible);
+  document.querySelector('#glossaryToggle button').textContent = glossaryVisible ? '📖 Hide Glossary' : '📖 Show Glossary';
+}
+
+// ── State ──────────────────────────────────────────────────
+const DEFAULT_PROFILES = {
+  methodical: { name:"The Methodical", scan:225, decision:450, tap:220, miss:0.05, mistake:0.04, fatigue:1.008, frustration:0.015, booster:0.3 },
+  scanner: { name:"The Scanner", scan:112, decision:225, tap:150, miss:0.20, mistake:0.14, fatigue:1.012, frustration:0.04, booster:0.4 },
+  comfortable: { name:"The Comfortable", scan:175, decision:350, tap:200, miss:0.12, mistake:0.08, fatigue:1.003, frustration:0.007, booster:0.6 },
+  struggler: { name:"The Struggler", scan:300, decision:625, tap:280, miss:0.25, mistake:0.22, fatigue:1.018, frustration:0.055, booster:0.8 },
+};
+
+let profiles = JSON.parse(JSON.stringify(DEFAULT_PROFILES));
+let currentProfile = 'methodical';
+let simResults = null;
+
+// ── Profile Editor ─────────────────────────────────────────
+function selectProfile(key) {
+  currentProfile = key;
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  loadProfileToUI(key);
+}
+
+function loadProfileToUI(key) {
+  const p = profiles[key];
+  document.getElementById('p_scan').value = p.scan;
+  document.getElementById('p_decision').value = p.decision;
+  document.getElementById('p_tap').value = p.tap;
+  document.getElementById('p_miss').value = p.miss;
+  document.getElementById('p_mistake').value = p.mistake;
+  document.getElementById('p_fatigue').value = p.fatigue;
+  document.getElementById('p_frustration').value = p.frustration;
+  document.getElementById('p_booster').value = p.booster;
+}
+
+function saveProfile() {
+  const p = profiles[currentProfile];
+  p.scan = +document.getElementById('p_scan').value;
+  p.decision = +document.getElementById('p_decision').value;
+  p.tap = +document.getElementById('p_tap').value;
+  p.miss = +document.getElementById('p_miss').value;
+  p.mistake = +document.getElementById('p_mistake').value;
+  p.fatigue = +document.getElementById('p_fatigue').value;
+  p.frustration = +document.getElementById('p_frustration').value;
+  p.booster = +document.getElementById('p_booster').value;
+  setStatus('Profile "' + profiles[currentProfile].name + '" saved.', 'done');
+}
+
+function resetProfiles() {
+  profiles = JSON.parse(JSON.stringify(DEFAULT_PROFILES));
+  loadProfileToUI(currentProfile);
+  setStatus('All profiles reset to defaults.', 'info');
+}
+
+// ── Mix ────────────────────────────────────────────────────
+function updateMix() {
+  const keys = ['methodical','scanner','comfortable','struggler'];
+  let total = 0;
+  keys.forEach(k => {
+    const v = +document.getElementById('mix_'+k).value;
+    document.getElementById('mix_'+k+'_v').textContent = v+'%';
+    total += v;
+  });
+  document.getElementById('mixTotal').textContent = total+'%';
+  document.getElementById('mixTotal').style.color = total===100 ? 'var(--success)' : 'var(--danger)';
+}
+
+// ── Tabs ───────────────────────────────────────────────────
+function showTab(name) {
+  ['chart','table','config'].forEach(t => {
+    document.getElementById('tab_'+t).classList.toggle('hidden', t!==name);
+  });
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+// ── Status ─────────────────────────────────────────────────
+function setStatus(msg, type) {
+  const bar = document.getElementById('statusBar');
+  bar.className = 'status status-' + (type||'info');
+  bar.innerHTML = msg;
+}
+
+// ── Build config JSON ──────────────────────────────────────
+function buildConfig() {
+  return {
+    version: document.getElementById('versionSelect').value || 'current',
+    cohort: +document.getElementById('cohort').value,
+    levelFrom: +document.getElementById('levelFrom').value,
+    levelTo: +document.getElementById('levelTo').value,
+    seed: +document.getElementById('seed').value,
+    mode: document.getElementById('mode').value,
+    profiles: profiles,
+    mix: {
+      methodical: +document.getElementById('mix_methodical').value / 100,
+      scanner: +document.getElementById('mix_scanner').value / 100,
+      comfortable: +document.getElementById('mix_comfortable').value / 100,
+      struggler: +document.getElementById('mix_struggler').value / 100,
+    },
+    booster: {
+      enabled: document.getElementById('b_enabled').checked,
+      hint_per_attempt: +document.getElementById('b_hint').value,
+      scissors_per_attempt: +document.getElementById('b_scissors').value,
+      wand_per_attempt: +document.getElementById('b_wand').value,
+    },
+    overhead: {
+      level_load_time_ms: +document.getElementById('o_load').value,
+      win_celebration_ms: +document.getElementById('o_win').value,
+    }
+  };
+}
+
+function copyConfig() {
+  navigator.clipboard.writeText(JSON.stringify(buildConfig(), null, 2));
+  setStatus('Config copied to clipboard.', 'done');
+}
+
+// ── Simulation ─────────────────────────────────────────────
+let simStartTime = null;
+let simTimer = null;
+
+function updateRunningStatus() {
+  if (!simStartTime) return;
+  const elapsed = Math.round((Date.now() - simStartTime) / 1000);
+  const min = Math.floor(elapsed / 60);
+  const sec = elapsed % 60;
+  const timeStr = min > 0 ? `${min}m ${sec}s` : `${sec}s`;
+  setStatus(
+    `<span class="spinner"></span> Simulation running... ${timeStr} elapsed. ` +
+    `Check terminal for progress.`,
+    'running'
+  );
+}
+
+async function runSimulation() {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Running...';
+
+  const config = buildConfig();
+  document.getElementById('configJson').textContent = JSON.stringify(config, null, 2);
+
+  // Estimate time
+  const levelCount = (config.levelTo - config.levelFrom + 1) || 30;
+  const cohort = config.cohort || 500;
+  const estSeconds = Math.round(levelCount * cohort * 0.0005 + 2);
+  setStatus(
+    `<span class="spinner"></span> Simulation starting... ` +
+    `L${config.levelFrom}–L${config.levelTo} × ${cohort} players. Estimated: ~${estSeconds}s. Check terminal for progress.`,
+    'running'
+  );
+
+  // Start elapsed timer
+  simStartTime = Date.now();
+  simTimer = setInterval(updateRunningStatus, 1000);
+
+  try {
+    const resp = await fetch('/api/simulate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(config),
+    });
+
+    clearInterval(simTimer);
+    simStartTime = null;
+
+    if (resp.ok) {
+      const elapsed = Math.round((Date.now() - (simStartTime || Date.now())) / 1000);
+      simResults = await resp.json();
+      renderResults(simResults);
+      // Refresh dataset info so reports list updates
+      await loadDatasets();
+      btn.disabled = false;
+      btn.innerHTML = 'Run Simulation';
+      return;
+    } else {
+      const err = await resp.json().catch(() => ({error: 'Unknown error'}));
+      setStatus(`Error: ${err.error || resp.statusText}`, 'error');
+    }
+  } catch(e) {
+    clearInterval(simTimer);
+    simStartTime = null;
+
+    if (e.name === 'TypeError' && e.message.includes('fetch')) {
+      // No server running
+      setStatus(
+        'No API server detected. Start the server first:<br><br>' +
+        '<code style="background:#e8e8e8;padding:4px 8px;border-radius:4px;">' +
+        'cd "User Simulator" && python tools/server.py</code><br><br>' +
+        'Or run CLI directly:<br>' +
+        '<code style="background:#e8e8e8;padding:4px 8px;border-radius:4px;">' +
+        'python tools/calibrate.py --mode ' + config.mode +
+        ' --level-from ' + config.levelFrom +
+        ' --level-to ' + config.levelTo +
+        ' --cohort ' + config.cohort + '</code>',
+        'info'
+      );
+    } else {
+      setStatus(`Connection error: ${e.message}. Is the server still running?`, 'error');
+    }
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'Run Simulation';
+}
+
+// ── Render Results ─────────────────────────────────────────
+function renderResults(data) {
+  const rows = data.levels || [];
+  if (!rows.length) {
+    setStatus('No results returned.', 'error');
+    return;
+  }
+
+  document.getElementById('summarySection').classList.remove('hidden');
+  document.getElementById('resultTabs').classList.remove('hidden');
+
+  // Summary
+  const ratios = rows.filter(r => r.feed_avg > 0).map(r => r.sim_avg / r.feed_avg);
+  const avgRatio = ratios.length ? (ratios.reduce((a,b)=>a+b,0)/ratios.length) : 0;
+  const wrDiffs = rows.map(r => (r.sim_wr||0) - (r.feed_wr||0));
+  const avgWrDiff = wrDiffs.length ? wrDiffs.reduce((a,b)=>a+b,0)/wrDiffs.length : 0;
+  const attDiffs = rows.map(r => (r.sim_att||0) - (r.feed_att||0));
+  const avgAttDiff = attDiffs.length ? attDiffs.reduce((a,b)=>a+b,0)/attDiffs.length : 0;
+
+  document.getElementById('s_levels').textContent = rows.length;
+  document.getElementById('s_timeRatio').textContent = avgRatio.toFixed(2) + 'x';
+  document.getElementById('s_winDiff').textContent = (avgWrDiff>=0?'+':'') + (avgWrDiff*100).toFixed(2) + 'pp';
+  document.getElementById('s_attDiff').textContent = (avgAttDiff>=0?'+':'') + avgAttDiff.toFixed(3);
+
+  const ratioEl = document.getElementById('s_timeRatio');
+  ratioEl.className = 'value ' + (avgRatio > 0.7 && avgRatio < 1.3 ? 'good' : avgRatio > 0.5 && avgRatio < 2 ? 'warn' : 'bad');
+
+  setStatus(`Simulation complete: ${rows.length} levels compared.`, 'done');
+
+  // Table
+  const tbody = document.getElementById('resultsBody');
+  tbody.innerHTML = '';
+  rows.forEach(r => {
+    const ratio = r.feed_avg > 0 ? (r.sim_avg/r.feed_avg) : 0;
+    const cls = ratio > 0.7 && ratio < 1.3 ? 'good' : ratio > 0.5 && ratio < 2 ? 'warn' : 'bad';
+    tbody.innerHTML += `<tr>
+      <td>${r.level}</td><td>${r.board||''}</td><td class="num">${r.arrows||''}</td>
+      <td class="num">${r.sim_avg.toFixed(2)}m</td><td class="num">${r.feed_avg.toFixed(2)}m</td>
+      <td class="num ${cls}">${ratio.toFixed(2)}</td>
+      <td class="num">${(r.sim_wr*100).toFixed(1)}%</td><td class="num">${(r.feed_wr*100).toFixed(1)}%</td>
+      <td class="num">${r.sim_att.toFixed(3)}</td><td class="num">${r.feed_att.toFixed(3)}</td>
+    </tr>`;
+  });
+
+  // Plotly charts
+  renderPlotlyCharts(rows);
+}
+
+function renderPlotlyCharts(rows) {
+  const levels = rows.map(r => 'L' + r.level);
+  const levelNums = rows.map(r => r.level);
+  const plotlyConfig = { responsive: true, displayModeBar: true, modeBarButtonsToRemove: ['lasso2d','select2d'] };
+  const baseLayout = {
+    font: { family: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif', size: 12 },
+    paper_bgcolor: 'transparent', plot_bgcolor: '#fafbfc',
+    margin: { l: 50, r: 20, t: 30, b: 50 },
+    hovermode: 'x unified',
+    xaxis: { title: 'Level', tickangle: -45, dtick: rows.length > 50 ? 10 : (rows.length > 20 ? 5 : 1) },
+  };
+
+  // ── Chart 1: Avg Time (Sim vs Feed) with range slider ──
+  Plotly.newPlot('plotlyTimeChart', [
+    { x: levelNums, y: rows.map(r => r.sim_avg), name: 'Simulator', type: 'bar',
+      marker: { color: '#4a6fa5' }, hovertemplate: 'L%{x}: %{y:.2f} min<extra>Sim</extra>' },
+    { x: levelNums, y: rows.map(r => r.feed_avg), name: 'Feed Data', type: 'bar',
+      marker: { color: '#f39c12', opacity: 0.7 }, hovertemplate: 'L%{x}: %{y:.2f} min<extra>Feed</extra>' },
+  ], {
+    ...baseLayout, barmode: 'group', bargap: 0.15, bargroupgap: 0.05,
+    yaxis: { title: 'Avg Time (min)' },
+    xaxis: {
+      ...baseLayout.xaxis,
+      rangeslider: { visible: true, thickness: 0.08 },
+    },
+    legend: { orientation: 'h', y: 1.12, x: 0.5, xanchor: 'center' },
+  }, plotlyConfig);
+
+  // ── Chart 2: Time Ratio with color zones ──
+  const ratios = rows.map(r => r.feed_avg > 0 ? r.sim_avg / r.feed_avg : 0);
+  const ratioColors = ratios.map(r =>
+    (r > 0.7 && r < 1.3) ? '#27ae60' : (r > 0.5 && r < 2) ? '#f39c12' : '#e74c3c'
+  );
+  Plotly.newPlot('plotlyRatioChart', [
+    { x: levelNums, y: ratios, type: 'bar', name: 'Ratio',
+      marker: { color: ratioColors },
+      hovertemplate: 'L%{x}: %{y:.2f}x<extra></extra>' },
+  ], {
+    ...baseLayout,
+    yaxis: { title: 'Ratio (sim/feed)' },
+    shapes: [
+      // Green zone band 0.7–1.3
+      { type: 'rect', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: 0.7, y1: 1.3,
+        fillcolor: 'rgba(39,174,96,0.08)', line: { width: 0 } },
+      // Perfect line at 1.0
+      { type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: 1, y1: 1,
+        line: { color: '#888', width: 1, dash: 'dash' } },
+    ],
+    annotations: [
+      { x: 1, y: 1, xref: 'paper', yref: 'y', text: '1.0x', showarrow: false,
+        font: { size: 10, color: '#888' }, xanchor: 'left' }
+    ],
+  }, plotlyConfig);
+
+  // ── Chart 3: Win Rate comparison ──
+  Plotly.newPlot('plotlyWinRateChart', [
+    { x: levelNums, y: rows.map(r => (r.sim_wr * 100)), name: 'Sim WR%', type: 'scatter', mode: 'lines+markers',
+      line: { color: '#4a6fa5', width: 2 }, marker: { size: 4 },
+      hovertemplate: 'L%{x}: %{y:.1f}%<extra>Sim</extra>' },
+    { x: levelNums, y: rows.map(r => (r.feed_wr * 100)), name: 'Feed WR%', type: 'scatter', mode: 'lines+markers',
+      line: { color: '#f39c12', width: 2, dash: 'dot' }, marker: { size: 4 },
+      hovertemplate: 'L%{x}: %{y:.1f}%<extra>Feed</extra>' },
+  ], {
+    ...baseLayout,
+    yaxis: { title: 'Win Rate %', range: [0, 105] },
+    legend: { orientation: 'h', y: 1.12, x: 0.5, xanchor: 'center' },
+  }, plotlyConfig);
+}
+
+// ── Init ───────────────────────────────────────────────────
+loadProfileToUI('methodical');
+updateMix();
+loadDatasets();
+</script>
+</body>
+</html>

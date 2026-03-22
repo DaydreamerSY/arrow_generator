@@ -124,9 +124,11 @@ def compute_cohort_csvs(
         start_pct = agg.started / cohort_size
         complete_pct = agg.completed / cohort_size
         win_rate = agg.completed / agg.started if agg.started > 0 else 0.0
-        during_pct = complete_pct - start_pct
+        # During Level %: fraction of starters who gave up during this level
+        during_pct = (agg.started - agg.completed) / agg.started if agg.started > 0 else 0.0
         fail_rate = 1.0 - (agg.total_wins / agg.total_matches) if agg.total_matches > 0 else 0.0
-        churn_rate = 1.0 - win_rate
+        # Churn during level: players who started but gave up (not just failed)
+        churn_during_rate = agg.churned_during / agg.started if agg.started > 0 else 0.0
 
         # Between Level %: (start(N+1) - winners(N)) / winners(N)
         # Computed relative to PREVIOUS level's winners
@@ -144,7 +146,7 @@ def compute_cohort_csvs(
             "During Level %": during_pct,
             "Between Level %": between_pct if between_pct is not None else "null",
             "fail rate %": fail_rate,
-            "churn rate %": churn_rate,
+            "churn rate %": churn_during_rate,
         })
 
         prev_winners = agg.completed
@@ -216,6 +218,7 @@ class CohortSimulator:
         attempts: List[AttemptResult] = []
         total_time_ms = 0.0
         won = False
+        gave_up = False
 
         for attempt_num in range(acfg.max_attempts):
             result = adapter.simulate_attempt(attempt_num)
@@ -228,14 +231,16 @@ class CohortSimulator:
 
             # Decide whether to retry or give up
             if user.should_give_up(attempt_num + 1):
+                gave_up = True
                 break
 
+        # churned_during = player CHOSE to quit (not just exhausted attempts)
         return LevelResult(
             level_id=board.level_id,
             won=won,
             total_time_ms=total_time_ms,
             attempts=attempts,
-            churned_during=not won,
+            churned_during=gave_up,
         )
 
     def run(self, progress_interval: int = 500) -> Tuple[List[Dict], List[Dict]]:

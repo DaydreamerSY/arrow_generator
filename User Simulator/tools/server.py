@@ -36,8 +36,7 @@ from config import (
     SkillConfig,
 )
 from engine import Board, load_level, compute_level_metrics
-from game_adapter import ArrowEscapeAdapter
-from user_model import UserModel
+from runner import simulate_level
 
 
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -122,53 +121,7 @@ def load_feed_data(folder_name="current"):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  Per-Level Simulation
-# ═══════════════════════════════════════════════════════════════════════════════
-
-def simulate_level(board, sim_config, n_players, seed, profiles, mix):
-    """Run per-level simulation with LOCAL copies of profiles/mix (no global mutation)."""
-    rng = random.Random(seed)
-    acfg = sim_config.attempt
-    all_times_ms, all_attempts = [], []
-    wins, total_matches, total_wins = 0, 0, 0
-
-    profiles_list = list(profiles.keys())
-    weights = [mix[p] for p in profiles_list]
-
-    for ui in range(n_players):
-        chosen = rng.choices(profiles_list, weights=weights, k=1)[0]
-        user = UserModel(ui + seed, profiles[chosen], sim_config)
-        adapter = ArrowEscapeAdapter(board, user, sim_config)
-        total_time, won = 0.0, False
-
-        for att_num in range(acfg.max_attempts):
-            result = adapter.simulate_attempt(att_num)
-            total_time += result.time_ms
-            total_matches += 1
-            if result.won:
-                won = True
-                total_wins += 1
-                break
-            if user.should_give_up(att_num + 1):
-                break
-
-        if won:
-            wins += 1
-        all_times_ms.append(total_time)
-        all_attempts.append(att_num + 1)
-
-    times_min = [t / 60_000.0 for t in all_times_ms]
-    return {
-        "avg_time": statistics.mean(times_min) if times_min else 0,
-        "med_time": statistics.median(times_min) if times_min else 0,
-        "avg_attempts": statistics.mean(all_attempts) if all_attempts else 1,
-        "win_rate": wins / n_players if n_players > 0 else 0,
-        "fail_rate": 1 - (total_wins / total_matches) if total_matches > 0 else 0,
-    }
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  API Handler
+#  API Handler (simulate_level imported from src/runner.py)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def handle_simulate(body):

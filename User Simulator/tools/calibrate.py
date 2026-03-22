@@ -20,8 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from config import PLAYER_MIX, PLAYER_PROFILES, SimulationConfig
 from engine import load_level, compute_level_metrics
-from game_adapter import ArrowEscapeAdapter
-from user_model import AttemptResult, UserModel
+from runner import simulate_level
 
 
 def load_feed_playtime(filepath: str) -> Dict[int, Dict]:
@@ -52,42 +51,8 @@ def load_feed_engagement(filepath: str) -> Dict[int, Dict]:
 
 
 def simulate_single_level(board, sim_config, n_players, seed):
-    rng = random.Random(seed)
-    acfg = sim_config.attempt
-    all_times_ms, all_attempts = [], []
-    wins, total_matches, total_wins = 0, 0, 0
-    profiles = list(PLAYER_PROFILES.keys())
-    weights = [PLAYER_MIX[p] for p in profiles]
-
-    for ui in range(n_players):
-        chosen = rng.choices(profiles, weights=weights, k=1)[0]
-        user = UserModel(ui + seed, PLAYER_PROFILES[chosen], sim_config)
-        adapter = ArrowEscapeAdapter(board, user, sim_config)
-        total_time, won = 0.0, False
-
-        for att in range(acfg.max_attempts):
-            result = adapter.simulate_attempt(att)
-            total_time += result.time_ms
-            total_matches += 1
-            if result.won:
-                won = True
-                total_wins += 1
-                break
-            if user.should_give_up(att + 1):
-                break
-
-        if won: wins += 1
-        all_times_ms.append(total_time)
-        all_attempts.append(att + 1 if not won else att + 1)
-
-    times_min = [t / 60_000.0 for t in all_times_ms]
-    return {
-        "avg_time": statistics.mean(times_min),
-        "med_time": statistics.median(times_min),
-        "avg_attempts": statistics.mean(all_attempts),
-        "win_rate": wins / n_players if n_players > 0 else 0,
-        "fail_rate": 1 - (total_wins / total_matches) if total_matches > 0 else 0,
-    }
+    """Wrapper around shared simulate_level using global profiles/mix."""
+    return simulate_level(board, sim_config, n_players, seed, PLAYER_PROFILES, PLAYER_MIX)
 
 
 def main():
@@ -100,6 +65,8 @@ def main():
     parser.add_argument("--max-levels", type=int, default=50)
     parser.add_argument("--min-feed-start", type=int, default=30)
     parser.add_argument("--mode", type=str, default="level", choices=["level", "cohort"])
+    parser.add_argument("--auto", action="store_true", help="Auto-calibrate timing_multiplier via binary search")
+    parser.add_argument("--auto-iters", type=int, default=8, help="Max iterations for auto-calibration")
     args = parser.parse_args()
 
     feed_pt = load_feed_playtime(str(Path(args.feed_dir) / "Level playtime.csv"))
@@ -161,6 +128,49 @@ def main():
         swr = sim_results[lvl]["win_rate"]
         fwr = feed_eng[lvl]["win_rate"]
         print(f"    L{lvl:>4}: sim={sa:.2f}m feed={fa:.2f}m ratio={ratio:.2f} | WR {swr:.3f} vs {fwr:.3f}")
+
+    # ── Auto-calibration ────────────────────────────────────────────────
+    if args.auto and ratios:
+        avg_r = statistics.mean(ratios)
+        print(f"\n{'='*60}")
+        print("  AUTO-CALIBRATION (timing_multiplier)")
+        print(f"{'='*60}")
+        print(f"  Initial ratio: {avg_r:.3f}")
+
+        # Binary search: target ratio = 1.0
+        # timing_multiplier scales output time linearly
+        multiplier = 1.0 / avg_r if avg_r > 0 else 1.0
+        best_m, best_err = multiplier, abs(1.0 - avg_r)
+
+        for it in range(args.auto_iters):
+            sim_config_auto = SimulationConfig(
+                cohort_size=args.cohort, random_seed=args.seed,
+                timing_multiplier=multiplier,
+            )
+            # Re-run with new multiplier
+            auto_ratios = []
+            for lf in level_files:
+                board = load_level(str(lf))
+                sr = simulate_single_level(board, sim_config_auto, args.cohort, args.seed + board.level_id)
+                lvl = board.level_id
+                if lvl in feed_pt and feed_pt[lvl]["avg_time"] > 0:
+                    auto_ratios.append(sr["avg_time"] / feed_pt[lvl]["avg_time"])
+
+            if not auto_ratios:
+                break
+            new_avg = statistics.mean(auto_ratios)
+            err = abs(1.0 - new_avg)
+            print(f"  iter {it+1}: multiplier={multiplier:.4f} ratio={new_avg:.3f} err={err:.4f}")
+
+            if err < best_err:
+                best_m, best_err = multiplier, err
+            if err < 0.02:  # convergence threshold: within 2%
+                break
+            # Adjust: new_multiplier = old_multiplier / new_ratio
+            multiplier = multiplier / new_avg
+
+        print(f"\n  Best timing_multiplier = {best_m:.4f} (err={best_err:.4f})")
+        print(f"  → Set SimulationConfig(timing_multiplier={best_m:.4f})\n")
 
     # Suggestions
     avg_r = statistics.mean(ratios) if ratios else 1.0

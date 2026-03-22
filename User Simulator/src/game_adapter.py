@@ -39,10 +39,11 @@ from user_model import AttemptResult, UserModel, ViewportModel, ViewportRegion
 
 @dataclass
 class BoosterInventory:
-    """Tracks booster usage within one attempt."""
-    hints_remaining: int = 3
-    scissors_remaining: int = 2
-    wands_remaining: int = 1
+    """Tracks booster usage within one attempt.
+    No defaults — must call reset(bcfg) before use to sync with BoosterConfig."""
+    hints_remaining: int = 0
+    scissors_remaining: int = 0
+    wands_remaining: int = 0
 
     def reset(self, bcfg: BoosterConfig):
         self.hints_remaining = bcfg.hint_per_attempt
@@ -126,11 +127,17 @@ class BoosterModel:
         if not self.board_state.remaining:
             return None
         self.inventory.scissors_remaining -= 1
-        # Player picks the most "blocking" arrow — the one blocking the most others
+        # Player picks the arrow that BLOCKS the most other arrows (biggest blocker).
+        # Precompute blocking_map in O(N×W), then pick max — avoids O(N²×W).
+        blocking_count = {}  # arrow_id → how many arrows it blocks
+        for other in self.board_state.remaining.values():
+            blocker = self.board_state.find_blocker(other)
+            if blocker:
+                blocking_count[blocker.arrow_id] = blocking_count.get(blocker.arrow_id, 0) + 1
         best = None
         best_score = -1
         for a in self.board_state.remaining.values():
-            score = self.board_state.count_blockers(a)
+            score = blocking_count.get(a.arrow_id, 0)
             if score > best_score:
                 best_score = score
                 best = a
@@ -386,7 +393,7 @@ class ArrowEscapeAdapter:
             return False
 
         if choice == "hint":
-            self.user.total_time += self.cfg.booster.hint_activation_ms
+            self.user.total_time += self.cfg.booster.hint_activation_ms * self.user.fatigue()
             aid = self.booster.apply_hint()
             if aid is not None:
                 self.user.arrows_cleared += 1
@@ -394,7 +401,7 @@ class ArrowEscapeAdapter:
                 return True
 
         elif choice == "scissors":
-            self.user.total_time += self.cfg.booster.scissors_activation_ms
+            self.user.total_time += self.cfg.booster.scissors_activation_ms * self.user.fatigue()
             aid = self.booster.apply_scissors()
             if aid is not None:
                 self.user.arrows_cleared += 1
@@ -402,7 +409,7 @@ class ArrowEscapeAdapter:
                 return True
 
         elif choice == "wand":
-            self.user.total_time += self.cfg.booster.wand_activation_ms
+            self.user.total_time += self.cfg.booster.wand_activation_ms * self.user.fatigue()
             removed = self.booster.apply_wand()
             if removed:
                 self.user.arrows_cleared += len(removed)

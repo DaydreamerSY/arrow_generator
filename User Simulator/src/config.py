@@ -64,7 +64,7 @@ class EyeConfig:
     fixation_time: float = 30           # ms per fixation
     saccade_time: float = 12            # ms eye movement
     recheck_probability: float = 0.15
-    color_confusion_penalty: float = 40   # ms (was 150)
+    color_confusion_penalty: float = 40   # ms — NOT YET IMPLEMENTED: extra scan time when arrows share visual similarity
 
 
 @dataclass
@@ -166,8 +166,8 @@ class ComboConfig:
     """
     Combo system — chain clears within time window give bonuses.
 
-    NOT implemented for Arrow Escape (no combo mechanic).
-    Interface ready for other games (match-3, etc.).
+    NOT IMPLEMENTED for Arrow Escape (no combo mechanic).
+    Placeholder for future games (match-3, etc.). Do not remove.
     """
     enabled: bool = False
     combo_window_ms: float = 2000            # time to maintain combo chain
@@ -201,7 +201,7 @@ class PlayerProfile:
 
     # ── Scan behavior (calibrated ×0.25) ────────────────────────
     board_scan_time: float = 125            # ms (was 500)
-    hesitation_threshold: int = 2
+    hesitation_threshold: int = 2  # NOT YET IMPLEMENTED: when solvable_count <= threshold, multiply decision_time
     scan_direction: str = "ltr_ttb"
     memory_probability: float = 0.4
     recheck_probability: float = 0.15
@@ -427,6 +427,10 @@ class SimulationConfig:
     cohort_size: int = 4936
     random_seed: int = 42
     output_percentiles: List[int] = field(default_factory=lambda: [25, 50, 75, 90])
+    # NOTE: timing_multiplier only scales OUTPUT time (runner.py post-multiply).
+    # It does NOT affect internal decisions (fatigue, frustration, timeout, should_give_up).
+    # Good enough for rough calibration. For behavior-accurate scaling, modify profile timing params directly.
+    timing_multiplier: float = 1.0
 
     # Sub-configs
     viewport: ViewportConfig = field(default_factory=ViewportConfig)

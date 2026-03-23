@@ -134,6 +134,9 @@ def handle_simulate(body):
         random_seed=config.get("seed", 42),
     )
 
+    # Apply timing multiplier
+    sim_config.timing_multiplier = config.get("timing_multiplier", 1.0)
+
     # Apply booster config
     bcfg = config.get("booster", {})
     sim_config.booster.enabled = bcfg.get("enabled", True)
@@ -162,6 +165,18 @@ def handle_simulate(body):
             if "fatigue" in overrides: p.fatigue_factor = overrides["fatigue"]
             if "frustration" in overrides: p.frustration_buildup_rate = overrides["frustration"]
             if "booster" in overrides: p.booster_willingness = overrides["booster"]
+            if "initial_zoom" in overrides: p.initial_zoom = overrides["initial_zoom"]
+            if "preferred_zoom" in overrides: p.preferred_zoom = overrides["preferred_zoom"]
+            if "zoom_in_tap" in overrides: p.zoom_in_to_tap_prob = overrides["zoom_in_tap"]
+            if "zoom_out_survey" in overrides: p.zoom_out_survey_prob = overrides["zoom_out_survey"]
+            if "viewport_cleared" in overrides: p.viewport_cleared_zoom_out_prob = overrides["viewport_cleared"]
+            if "recursive_solve" in overrides: p.recursive_solve_probability = overrides["recursive_solve"]
+            if "max_recursion" in overrides: p.max_recursion_depth = overrides["max_recursion"]
+            if "memory" in overrides: p.memory_probability = overrides["memory"]
+            if "recheck" in overrides: p.recheck_probability = overrides["recheck"]
+            if "board_scan" in overrides: p.board_scan_time = overrides["board_scan"]
+            if "max_batch" in overrides: p.max_batch_before_pan = overrides["max_batch"]
+            if "frust_decay" in overrides: p.frustration_decay_after_solve = overrides["frust_decay"]
 
     mcfg = config.get("mix", {})
     for key, weight in mcfg.items():
@@ -264,6 +279,162 @@ def handle_simulate(body):
     return json.dumps({"levels": results})
 
 
+def handle_simulate_stream(body, wfile):
+    """Handle /api/simulate-stream POST — streams SSE progress events, then final results."""
+    config = json.loads(body)
+    t_start = time.time()
+
+    sim_config = SimulationConfig(
+        cohort_size=config.get("cohort", 500),
+        random_seed=config.get("seed", 42),
+    )
+    sim_config.timing_multiplier = config.get("timing_multiplier", 1.0)
+
+    bcfg = config.get("booster", {})
+    sim_config.booster.enabled = bcfg.get("enabled", True)
+    sim_config.booster.hint_per_attempt = bcfg.get("hint_per_attempt", 5)
+    sim_config.booster.scissors_per_attempt = bcfg.get("scissors_per_attempt", 5)
+    sim_config.booster.wand_per_attempt = bcfg.get("wand_per_attempt", 5)
+
+    ocfg = config.get("overhead", {})
+    sim_config.overhead.level_load_time_ms = ocfg.get("level_load_time_ms", 1500)
+    sim_config.overhead.win_celebration_ms = ocfg.get("win_celebration_ms", 2000)
+
+    profiles = copy.deepcopy(PLAYER_PROFILES)
+    mix = copy.deepcopy(PLAYER_MIX)
+
+    pcfg = config.get("profiles", {})
+    for key, overrides in pcfg.items():
+        if key in profiles:
+            p = profiles[key]
+            if "scan" in overrides: p.scan_time_per_arrow = overrides["scan"]
+            if "decision" in overrides: p.decision_time_base = overrides["decision"]
+            if "tap" in overrides: p.tap_time = overrides["tap"]
+            if "miss" in overrides: p.miss_probability = overrides["miss"]
+            if "mistake" in overrides: p.mistake_rate = overrides["mistake"]
+            if "fatigue" in overrides: p.fatigue_factor = overrides["fatigue"]
+            if "frustration" in overrides: p.frustration_buildup_rate = overrides["frustration"]
+            if "booster" in overrides: p.booster_willingness = overrides["booster"]
+            if "initial_zoom" in overrides: p.initial_zoom = overrides["initial_zoom"]
+            if "preferred_zoom" in overrides: p.preferred_zoom = overrides["preferred_zoom"]
+            if "zoom_in_tap" in overrides: p.zoom_in_to_tap_prob = overrides["zoom_in_tap"]
+            if "zoom_out_survey" in overrides: p.zoom_out_survey_prob = overrides["zoom_out_survey"]
+            if "viewport_cleared" in overrides: p.viewport_cleared_zoom_out_prob = overrides["viewport_cleared"]
+            if "recursive_solve" in overrides: p.recursive_solve_probability = overrides["recursive_solve"]
+            if "max_recursion" in overrides: p.max_recursion_depth = overrides["max_recursion"]
+            if "memory" in overrides: p.memory_probability = overrides["memory"]
+            if "recheck" in overrides: p.recheck_probability = overrides["recheck"]
+            if "board_scan" in overrides: p.board_scan_time = overrides["board_scan"]
+            if "max_batch" in overrides: p.max_batch_before_pan = overrides["max_batch"]
+            if "frust_decay" in overrides: p.frustration_decay_after_solve = overrides["frust_decay"]
+
+    mcfg = config.get("mix", {})
+    for key, weight in mcfg.items():
+        if key in mix:
+            mix[key] = weight
+
+    version = config.get("version", "current")
+    levels_dir = PROJECT_ROOT / "data" / "versions" / version / "test_data"
+    if not levels_dir.exists():
+        levels_dir = PROJECT_ROOT / "data" / "levels"
+    level_files = list(levels_dir.glob("*.json"))
+
+    def eid(p):
+        try: return int(p.stem.split("_")[1])
+        except: return 0
+    level_files.sort(key=eid)
+
+    feed_pt, feed_eng = load_feed_data(version)
+    feed_ids = set(feed_pt.keys())
+    level_files = [f for f in level_files if eid(f) in feed_ids]
+
+    level_from = config.get("levelFrom", 1)
+    level_to = config.get("levelTo", 9999)
+    level_files = [f for f in level_files if level_from <= eid(f) <= level_to]
+
+    cohort = config.get("cohort", 500)
+    total = len(level_files)
+
+    def send_sse(event_type, data):
+        """Send a single SSE event."""
+        msg = f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+        wfile.write(msg.encode("utf-8"))
+        wfile.flush()
+
+    # Send initial info
+    send_sse("start", {"total": total, "levelFrom": level_from, "levelTo": level_to, "cohort": cohort})
+
+    results = []
+    for i, lf in enumerate(level_files):
+        board = load_level(str(lf))
+        lvl = board.level_id
+        metrics = compute_level_metrics(board)
+
+        t0 = time.time()
+        sr = simulate_level(board, sim_config, cohort, config.get("seed", 42) + lvl, profiles, mix)
+        dt = time.time() - t0
+
+        fp = feed_pt.get(lvl, {})
+        fe = feed_eng.get(lvl, {})
+
+        row = {
+            "level": lvl,
+            "board": f"{board.width}x{board.height}",
+            "arrows": len(board.arrows),
+            "difficulty": round(metrics.difficulty_score, 3),
+            "sim_avg": round(sr["avg_time"], 3),
+            "feed_avg": round(fp.get("avg_time", 0), 3),
+            "sim_wr": round(sr["win_rate"], 4),
+            "feed_wr": round(fe.get("win_rate", 0), 4),
+            "sim_att": round(sr["avg_attempts"], 4),
+            "feed_att": round(fp.get("avg_attempts", 0), 4),
+        }
+        results.append(row)
+
+        # Send progress event per level
+        elapsed = time.time() - t_start
+        rate = (i + 1) / elapsed if elapsed > 0 else 0
+        eta = (total - i - 1) / rate if rate > 0 else 0
+        send_sse("progress", {
+            "index": i + 1,
+            "total": total,
+            "level": lvl,
+            "elapsed": round(elapsed, 1),
+            "eta": round(eta, 1),
+            "level_time": round(dt, 2),
+            "result": row,
+        })
+
+    # Auto-save CSVs (same as handle_simulate)
+    report_dir = PROJECT_ROOT / "data" / "versions" / version / "report"
+    report_dir.mkdir(exist_ok=True)
+
+    playtime_path = report_dir / "Sim_Level_playtime.csv"
+    with open(playtime_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["level", "board", "arrows", "difficulty",
+                         "sim_avg_min", "feed_avg_min", "ratio",
+                         "sim_med_min", "feed_med_min"])
+        for r in results:
+            ratio = round(r["sim_avg"] / r["feed_avg"], 4) if r["feed_avg"] > 0 else ""
+            writer.writerow([r["level"], r["board"], r["arrows"], r["difficulty"],
+                             r["sim_avg"], r["feed_avg"], ratio, "", ""])
+
+    engagement_path = report_dir / "Sim_Level_engagement.csv"
+    with open(engagement_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["level", "sim_win_rate", "feed_win_rate", "wr_diff_pp",
+                         "sim_attempts", "feed_attempts", "att_diff"])
+        for r in results:
+            wr_diff = round((r["sim_wr"] - r["feed_wr"]) * 100, 3)
+            att_diff = round(r["sim_att"] - r["feed_att"], 4)
+            writer.writerow([r["level"], r["sim_wr"], r["feed_wr"], wr_diff,
+                             r["sim_att"], r["feed_att"], att_diff])
+
+    elapsed = time.time() - t_start
+    send_sse("done", {"levels": results, "elapsed": round(elapsed, 1)})
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 #  HTTP Server
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -320,6 +491,29 @@ class SimHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+        elif self.path == "/api/simulate-stream":
+            content_len = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_len).decode("utf-8")
+            try:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream")
+                self.send_header("Cache-Control", "no-cache")
+                self.send_header("Connection", "close")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                handle_simulate_stream(body, self.wfile)
+            except Exception as e:
+                traceback.print_exc()
+                # Try to send error via SSE if headers already sent
+                try:
+                    msg = f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+                    self.wfile.write(msg.encode("utf-8"))
+                    self.wfile.flush()
+                except Exception:
+                    pass
+            finally:
+                # Force close connection so client reader gets done=true
+                self.close_connection = True
         else:
             self.send_response(404)
             self.end_headers()

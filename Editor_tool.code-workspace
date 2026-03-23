@@ -21,11 +21,12 @@
 			"path": "Core"
 		},
 		{
-			"name": "README",
-			"path": "README"
+			"name": "User Simulator",
+			"path": "User Simulator"
 		},
 		{
-			"path": "User Simulator"
+			"name": "README",
+			"path": "README"
 		}
 	],
 	"settings": {

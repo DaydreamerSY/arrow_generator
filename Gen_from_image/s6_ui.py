@@ -18,7 +18,7 @@ from PySide6.QtCore import Qt, QAbstractTableModel, QThread, Signal
 
 # Import from existing modules
 from helper import Args
-from s5_pipeline_excute import process_csv_row, setup_loguru
+from pipeline import process_csv_row, setup_loguru
 from loguru import logger
 
 
@@ -283,9 +283,10 @@ class MainWindow(QMainWindow):
 
         # Save CSV first just in case
         self.save_csv()
-        
+
         # We need a tasks list dict from the dataframe
-        tasks = [row._asdict() for row in self.current_dataframe.itertuples()]
+        # Convert each row to dict (tương thích với process_csv_row)
+        tasks = self.current_dataframe.to_dict('records')
 
         # Start Log
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")

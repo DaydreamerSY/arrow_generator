@@ -15,20 +15,25 @@ class Validator:
         # Tuy nhiên, kiến trúc mới không sinh rác nên không cần cache clear.
         pass
 
-    def check_global_constraints(self, current_arrows, new_arrow_candidate, grid_w, grid_h, min_width=None, max_width=None):
+    def check_global_constraints(self, current_arrows, new_arrow_candidate, grid_w, grid_h, min_width=None, max_width=None, initial_width=None):
         """
         Đánh giá tính hợp lệ của toàn bộ bảng sử dụng thuật toán Greedy Mô phỏng.
         Tối ưu hóa: Không cấp phát bộ nhớ động trong vòng lặp.
+
+        initial_width: Nếu != None, ở bước ĐẦU TIÊN của greedy simulation,
+                        phải có ít nhất initial_width arrows removable.
+                        → Kiểm soát "initial removable count".
         """
         hypothetical_board = current_arrows + [new_arrow_candidate]
-        
+
         # Chuyển giao logic kiểm tra cho hàm lặp
         return self._is_board_state_solvable_iterative(
-            hypothetical_board, grid_w, grid_h, 
-            min_width=min_width, max_width=max_width
+            hypothetical_board, grid_w, grid_h,
+            min_width=min_width, max_width=max_width,
+            initial_width=initial_width
         )
 
-    def _is_board_state_solvable_iterative(self, arrows, grid_w, grid_h, min_width, max_width):
+    def _is_board_state_solvable_iterative(self, arrows, grid_w, grid_h, min_width, max_width, initial_width=None):
         if not arrows:
             return True
 
@@ -44,6 +49,7 @@ class Validator:
 
         # Duy trì mảng quản lý các mũi tên chưa được giải
         remaining_arrows = list(arrows)
+        is_first_step = True  # Flag cho initial_width check
 
         # 3. Vòng lặp Mô phỏng Greedy
         while remaining_arrows:
@@ -81,6 +87,13 @@ class Validator:
             if min_width is not None and len(remaining_arrows) >= min_width:
                 if current_width < min_width:
                     return False
+
+            # 3B+. Kiểm tra Initial Width (chỉ ở bước đầu tiên)
+            # Đảm bảo ở trạng thái ban đầu có đủ arrows removable
+            if is_first_step and initial_width is not None:
+                if current_width < initial_width:
+                    return False
+                is_first_step = False
 
             # 3C. Giải phóng mặt bằng (Sửa đổi bộ nhớ tại chỗ)
             # Tắt cờ occupied của các mũi tên vừa thoát để mở đường cho vòng lặp tiếp theo

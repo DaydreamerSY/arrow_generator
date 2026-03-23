@@ -1,8 +1,6 @@
 # File: generator.py
-# Cập nhật Tối ưu hóa:
-# 1. Hoisting mảng p2_candidates ra ngoài vòng lặp retry.
-# 2. Loại bỏ .union() sao chép Set, thay bằng In-place add/remove O(1).
-# 3. Loại bỏ nối list bên trong vòng lặp.
+# Core arrow generation algorithm.
+# Tối ưu: Hoisting, In-place O(1), không nối list trong vòng lặp.
 
 import random
 from validator import Validator
@@ -80,8 +78,9 @@ class HybridLevelGeneratorTestable:
 
         cfg_min_width = getattr(self.args, 'min_width', 1)
         cfg_max_width = getattr(self.args, 'max_width', 1000000)
+        cfg_initial_width = getattr(self.args, 'initial_width', None)
 
-        logger.debug(f"DEBUG CHECK: Min={cfg_min_width}, Max={cfg_max_width}")
+        logger.debug(f"DEBUG CHECK: Min={cfg_min_width}, Max={cfg_max_width}, Initial={cfg_initial_width}")
 
         max_retries_per_arrow = 1000
 
@@ -121,11 +120,12 @@ class HybridLevelGeneratorTestable:
 
                 validator.clear_cache()
                 is_valid = validator.check_global_constraints(
-                    current_arrows_context, temp_arrow, gen_grid_w, gen_grid_h, 
-                    min_width=cfg_min_width, 
-                    max_width=cfg_max_width
+                    current_arrows_context, temp_arrow, gen_grid_w, gen_grid_h,
+                    min_width=cfg_min_width,
+                    max_width=cfg_max_width,
+                    initial_width=cfg_initial_width
                 )
-                
+
                 if is_valid:
                     newly_generated_arrows.append(temp_arrow)
                     gen_occupied_points.update(path)
@@ -239,6 +239,7 @@ class HybridLevelGeneratorTestable:
 
         cfg_min_width = getattr(self.args, 'min_width', 3)
         cfg_max_width = getattr(self.args, 'max_width', 5)
+        cfg_initial_width = getattr(self.args, 'initial_width', None)
 
         for i in range(num_to_gen):
             found_arrow = False
@@ -280,7 +281,8 @@ class HybridLevelGeneratorTestable:
                 is_valid = validator.check_global_constraints(
                     current_arrows_context, temp_arrow, gen_grid_w, gen_grid_h,
                     min_width=cfg_min_width,
-                    max_width=cfg_max_width
+                    max_width=cfg_max_width,
+                    initial_width=cfg_initial_width
                 )
 
                 if is_valid:
@@ -300,5 +302,3 @@ class HybridLevelGeneratorTestable:
 
         return final_arrows_to_add, arrow_id_counter, f"Lv: {level_name} | Successfully generated {len(final_arrows_to_add)} arrows!"
 
-    def _generate_arrow_backtracking_strict(self, current_path, target_length, editable_area, occupied_points, gen_grid_w, gen_grid_h, weights, max_turns, current_turns, current_direction, validator, all_fixed_arrows):
-         return None

@@ -79,6 +79,16 @@
   .status-done { background: #d4edda; color: #155724; }
   .status-error { background: #f8d7da; color: #721c24; }
 
+  /* Progress bar */
+  .progress-container { margin-top: 8px; }
+  .progress-bar-bg { width: 100%; height: 6px; background: #e0e0e0; border-radius: 3px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s ease; }
+  .progress-detail { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  /* Run context banner */
+  .run-context { padding: 8px 14px; background: var(--accent-light); border-radius: 6px; font-size: 13px; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .run-context .tag { background: var(--accent); color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+
   /* Tabs */
   .tabs { display: flex; gap: 2px; margin-bottom: 16px; }
   .tab { padding: 8px 16px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 13px; font-weight: 500; }
@@ -93,7 +103,8 @@
   .js-plotly-plot .plotly .modebar:hover { opacity: 1; }
 
   .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
-  .summary-card { text-align: center; padding: 12px; background: var(--accent-light); border-radius: 8px; }
+  .summary-card { text-align: center; padding: 12px; background: var(--accent-light); border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+  .summary-card:hover { background: #d9e3f1; }
   .summary-card .value { font-size: 22px; font-weight: 700; color: var(--accent); }
   .summary-card .label { font-size: 11px; color: var(--text-muted); }
 
@@ -101,6 +112,30 @@
   .hidden { display: none; }
   .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 6px; vertical-align: middle; }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* UI-03: Row highlighting */
+  th { cursor: pointer; user-select: none; }
+  th:hover { background: #d9e3f1; }
+  .row-danger { background: rgba(231,76,60,0.1); }
+  .row-warn { background: rgba(243,156,18,0.1); }
+
+  /* Filter bar */
+  .filter-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; padding: 10px; background: #f5f7fa; border-radius: 6px; }
+  .filter-bar select, .filter-bar input { font-size: 13px; }
+
+  /* Saved runs */
+  .saved-runs { margin-top: 16px; padding: 12px; background: #f9f9f9; border-radius: 6px; border: 1px solid var(--border); }
+  .saved-runs h3 { font-size: 13px; margin-bottom: 8px; color: var(--accent); }
+  .run-item { display: flex; align-items: center; gap: 8px; padding: 6px; background: #fff; border-radius: 4px; margin-bottom: 4px; font-size: 13px; }
+  .run-item input { flex: 1; padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px; }
+  .run-item .btn-sm { margin: 0; }
+
+  /* Presets */
+  .presets-section { margin-bottom: 12px; padding: 12px; background: #f9f9f9; border-radius: 6px; border: 1px solid var(--border); }
+  .presets-section h3 { font-size: 13px; margin-bottom: 8px; color: var(--accent); }
+  .presets-controls { display: flex; gap: 8px; }
+  .presets-controls select { flex: 1; }
+  .presets-controls .btn-sm { margin: 0; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -207,6 +242,36 @@
           </div>
         </div>
         <div style="margin-top:10px;">
+          <button class="btn btn-outline btn-sm" onclick="toggleAdvanced()">Show Advanced</button>
+        </div>
+        <div id="advancedParams" class="hidden">
+          <h3>Zoom & Viewport</h3>
+          <div class="field-row">
+            <div class="field"><label>Initial zoom</label><select id="p_initial_zoom"><option value="in">Zoom In</option><option value="out">Zoom Out</option></select></div>
+            <div class="field"><label>Preferred zoom</label><select id="p_preferred_zoom"><option value="in">In</option><option value="out">Out</option><option value="adaptive">Adaptive</option></select></div>
+          </div>
+          <div class="field-row-3">
+            <div class="field"><label>Zoom-in-to-tap</label><input type="number" id="p_zoom_in_tap" step="0.05" min="0" max="1"></div>
+            <div class="field"><label>ZO survey prob</label><input type="number" id="p_zoom_out_survey" step="0.05" min="0" max="1"></div>
+            <div class="field"><label>VP cleared ZO</label><input type="number" id="p_viewport_cleared" step="0.05" min="0" max="1"></div>
+          </div>
+          <h3>Cognition</h3>
+          <div class="field-row">
+            <div class="field"><label>Recursive solve prob</label><input type="number" id="p_recursive_solve" step="0.05" min="0" max="1"></div>
+            <div class="field"><label>Max recursion depth</label><input type="number" id="p_max_recursion" min="0" max="5"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Memory prob</label><input type="number" id="p_memory" step="0.05" min="0" max="1"></div>
+            <div class="field"><label>Recheck prob</label><input type="number" id="p_recheck" step="0.05" min="0" max="1"></div>
+          </div>
+          <h3>Effort & Behavior</h3>
+          <div class="field-row-3">
+            <div class="field"><label>Board scan (ms)</label><input type="number" id="p_board_scan" step="10"></div>
+            <div class="field"><label>Max batch/pan</label><input type="number" id="p_max_batch" min="1" max="10"></div>
+            <div class="field"><label>Frust. decay</label><input type="number" id="p_frust_decay" step="0.01" min="0" max="0.5"></div>
+          </div>
+        </div>
+        <div style="margin-top:10px;">
           <button class="btn btn-outline btn-sm" onclick="saveProfile()">Save Profile Changes</button>
           <button class="btn btn-outline btn-sm" onclick="resetProfiles()">Reset All</button>
         </div>
@@ -234,14 +299,40 @@
         </div>
       </div>
 
-      <!-- Run -->
-      <button class="btn btn-primary" id="runBtn" onclick="runSimulation()" style="width:100%;margin-top:8px;">
-        Run Simulation
-      </button>
+      <!-- UI-09: Config Presets -->
+      <div class="presets-section">
+        <h3>Presets</h3>
+        <div style="margin-bottom:8px;">
+          <label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Load preset</label>
+          <select id="presetsDropdown" style="font-size:13px;">
+            <option value="default">Default</option>
+          </select>
+        </div>
+        <div class="presets-controls">
+          <button class="btn btn-outline btn-sm" onclick="loadPreset()" style="flex:1;">Load</button>
+          <button class="btn btn-outline btn-sm" onclick="savePresetDialog()">Save New</button>
+        </div>
+      </div>
+
+      <!-- Run & Calibrate -->
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="btn btn-primary" id="runBtn" onclick="runSimulation()" style="flex:1;">Run Simulation</button>
+        <button class="btn btn-outline" id="calibrateBtn" onclick="autoCalibrate()" style="flex:0 0 auto;">🎯 Auto-Cal</button>
+      </div>
+
+      <!-- UI-02: Save Run button (shown after results) -->
+      <div id="saveRunSection" class="hidden" style="margin-top:8px;">
+        <button class="btn btn-outline" id="saveRunBtn" onclick="showSaveRunDialog()" style="width:100%;">
+          💾 Save This Run
+        </button>
+      </div>
     </div>
 
     <!-- RIGHT PANEL: Results -->
     <div class="results-area">
+      <!-- Run context banner: shows which dataset/range produced current charts -->
+      <div class="run-context hidden" id="runContext"></div>
+
       <div class="status status-info" id="statusBar">
         Configure settings and click "Run Simulation" to start.
       </div>
@@ -253,7 +344,14 @@
           <div class="summary-card"><div class="value" id="s_timeRatio">-</div><div class="label">Avg Time Ratio</div></div>
           <div class="summary-card"><div class="value" id="s_winDiff">-</div><div class="label">Win Rate Diff</div></div>
           <div class="summary-card"><div class="value" id="s_attDiff">-</div><div class="label">Attempt Diff</div></div>
+          <div class="summary-card" onclick="filterByOutliers()" id="outlierCard"><div class="value" id="s_outliers">-</div><div class="label">Outliers</div></div>
         </div>
+      </div>
+
+      <!-- UI-02: Saved Runs -->
+      <div id="savedRunsSection" class="saved-runs hidden">
+        <h3>Saved Runs</h3>
+        <div id="savedRunsList"></div>
       </div>
 
       <!-- Tabs -->
@@ -261,37 +359,79 @@
         <div class="tabs">
           <div class="tab active" onclick="showTab('chart')">Chart</div>
           <div class="tab" onclick="showTab('table')">Table</div>
+          <div class="tab" onclick="showTab('compare')">Compare</div>
           <div class="tab" onclick="showTab('config')">Config JSON</div>
         </div>
 
         <div id="tab_chart">
           <div class="card">
-            <h2>Avg Time: Sim vs Feed</h2>
+            <h2>Avg Time: Sim vs Feed <span id="chartCtxTime" style="font-size:12px;color:var(--text-muted);font-weight:400;"></span></h2>
             <div id="plotlyTimeChart" style="width:100%;height:350px;"></div>
           </div>
           <div class="card">
-            <h2>Time Ratio per Level (sim/feed)</h2>
+            <h2>Time Ratio per Level (sim/feed) <span id="chartCtxRatio" style="font-size:12px;color:var(--text-muted);font-weight:400;"></span></h2>
             <div id="plotlyRatioChart" style="width:100%;height:300px;"></div>
           </div>
           <div class="card">
-            <h2>Win Rate: Sim vs Feed</h2>
+            <h2>Win Rate: Sim vs Feed <span id="chartCtxWR" style="font-size:12px;color:var(--text-muted);font-weight:400;"></span></h2>
             <div id="plotlyWinRateChart" style="width:100%;height:300px;"></div>
+          </div>
+          <div class="card">
+            <h2>Difficulty Curve <span id="chartCtxDiff" style="font-size:12px;color:var(--text-muted);font-weight:400;"></span></h2>
+            <div id="plotlyDifficultyChart" style="width:100%;height:350px;"></div>
           </div>
         </div>
 
         <div id="tab_table" class="hidden">
           <div class="card">
+            <div style="margin-bottom:8px;display:flex;gap:8px;">
+              <button class="btn btn-outline btn-sm" onclick="exportCSV()">📥 Export CSV</button>
+            </div>
+            <!-- UI-03: Filter bar -->
+            <div class="filter-bar">
+              <select id="filterRatio" onchange="filterAndRenderTable()">
+                <option value="all">All Levels</option>
+                <option value="offtrack">Off-track (>1.3x or <0.7x)</option>
+                <option value="wayoff">Way off (>2x or <0.5x)</option>
+              </select>
+              <input type="text" id="filterLevelRange" placeholder="e.g. 15-25" onchange="filterAndRenderTable()">
+            </div>
             <div class="table-wrap">
               <table id="resultsTable">
                 <thead><tr>
-                  <th>Level</th><th>Board</th><th>Arrows</th>
-                  <th class="num">Sim Avg</th><th class="num">Feed Avg</th><th class="num">Ratio</th>
-                  <th class="num">Sim WR</th><th class="num">Feed WR</th>
-                  <th class="num">Sim Att</th><th class="num">Feed Att</th>
+                  <th onclick="sortTable('level', true)">Level</th>
+                  <th onclick="sortTable('board', true)">Board</th>
+                  <th onclick="sortTable('arrows', true)">Arrows</th>
+                  <th class="num" onclick="sortTable('sim_avg', false)">Sim Avg</th>
+                  <th class="num" onclick="sortTable('feed_avg', false)">Feed Avg</th>
+                  <th class="num" onclick="sortTable('ratio', false)">Ratio</th>
+                  <th class="num" onclick="sortTable('sim_wr', false)">Sim WR</th>
+                  <th class="num" onclick="sortTable('feed_wr', false)">Feed WR</th>
+                  <th class="num" onclick="sortTable('sim_att', false)">Sim Att</th>
+                  <th class="num" onclick="sortTable('feed_att', false)">Feed Att</th>
                 </tr></thead>
                 <tbody id="resultsBody"></tbody>
               </table>
             </div>
+          </div>
+        </div>
+
+        <!-- UI-02: Compare Tab -->
+        <div id="tab_compare" class="hidden">
+          <div class="card">
+            <h2>Run Comparison</h2>
+            <div class="field-row" style="margin-bottom:12px;">
+              <div class="field">
+                <label>Run A</label>
+                <select id="compareRunA"></select>
+              </div>
+              <div class="field">
+                <label>Run B</label>
+                <select id="compareRunB"></select>
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="doCompare()" style="width:100%;">Compare Runs</button>
+            <div id="compareResults" style="margin-top:16px;"></div>
           </div>
         </div>
 
@@ -378,15 +518,24 @@ function toggleGlossary() {
 
 // ── State ──────────────────────────────────────────────────
 const DEFAULT_PROFILES = {
-  methodical: { name:"The Methodical", scan:225, decision:450, tap:220, miss:0.05, mistake:0.04, fatigue:1.008, frustration:0.015, booster:0.3 },
-  scanner: { name:"The Scanner", scan:112, decision:225, tap:150, miss:0.20, mistake:0.14, fatigue:1.012, frustration:0.04, booster:0.4 },
-  comfortable: { name:"The Comfortable", scan:175, decision:350, tap:200, miss:0.12, mistake:0.08, fatigue:1.003, frustration:0.007, booster:0.6 },
-  struggler: { name:"The Struggler", scan:300, decision:625, tap:280, miss:0.25, mistake:0.22, fatigue:1.018, frustration:0.055, booster:0.8 },
+  methodical: { name:"The Methodical", scan:225, decision:450, tap:220, miss:0.05, mistake:0.04, fatigue:1.008, frustration:0.015, booster:0.3, initial_zoom:"out", preferred_zoom:"adaptive", zoom_in_to_tap:0.80, zoom_out_survey:0.30, viewport_cleared:0.85, recursive_solve:0.60, max_recursion:3, memory:0.50, recheck:0.10, board_scan:150, max_batch:4, frust_decay:0.015 },
+  scanner: { name:"The Scanner", scan:112, decision:225, tap:150, miss:0.20, mistake:0.14, fatigue:1.012, frustration:0.04, booster:0.4, initial_zoom:"out", preferred_zoom:"out", zoom_in_to_tap:0.50, zoom_out_survey:0.60, viewport_cleared:0.90, recursive_solve:0.20, max_recursion:1, memory:0.30, recheck:0.20, board_scan:88, max_batch:3, frust_decay:0.015 },
+  comfortable: { name:"The Comfortable", scan:175, decision:350, tap:200, miss:0.12, mistake:0.08, fatigue:1.003, frustration:0.007, booster:0.6, initial_zoom:"out", preferred_zoom:"adaptive", zoom_in_to_tap:0.85, zoom_out_survey:0.25, viewport_cleared:0.80, recursive_solve:0.45, max_recursion:2, memory:0.45, recheck:0.15, board_scan:125, max_batch:5, frust_decay:0.015 },
+  struggler: { name:"The Struggler", scan:300, decision:625, tap:280, miss:0.25, mistake:0.22, fatigue:1.018, frustration:0.055, booster:0.8, initial_zoom:"in", preferred_zoom:"in", zoom_in_to_tap:0.95, zoom_out_survey:0.10, viewport_cleared:0.70, recursive_solve:0.15, max_recursion:1, memory:0.20, recheck:0.25, board_scan:200, max_batch:2, frust_decay:0.015 },
 };
 
 let profiles = JSON.parse(JSON.stringify(DEFAULT_PROFILES));
 let currentProfile = 'methodical';
 let simResults = null;
+
+// ── UI-02: Saved Runs ──────────────────────────────────────
+let savedRuns = [];
+let currentRows = []; // UI-03: Current table rows for sorting/filtering
+
+// ── UI-09: Presets ────────────────────────────────────────
+let savedPresets = [{name:'Default', config: null}];
+let currentSortColumn = null;
+let currentSortAscending = true;
 
 // ── Profile Editor ─────────────────────────────────────────
 function selectProfile(key) {
@@ -394,6 +543,14 @@ function selectProfile(key) {
   document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
   event.target.classList.add('active');
   loadProfileToUI(key);
+}
+
+function toggleAdvanced() {
+  const div = document.getElementById('advancedParams');
+  const btn = event.target;
+  const isHidden = div.classList.contains('hidden');
+  div.classList.toggle('hidden', !isHidden);
+  btn.textContent = isHidden ? 'Hide Advanced' : 'Show Advanced';
 }
 
 function loadProfileToUI(key) {
@@ -406,6 +563,21 @@ function loadProfileToUI(key) {
   document.getElementById('p_fatigue').value = p.fatigue;
   document.getElementById('p_frustration').value = p.frustration;
   document.getElementById('p_booster').value = p.booster;
+  // Advanced params
+  if (document.getElementById('p_initial_zoom')) {
+    document.getElementById('p_initial_zoom').value = p.initial_zoom || 'out';
+    document.getElementById('p_preferred_zoom').value = p.preferred_zoom || 'adaptive';
+    document.getElementById('p_zoom_in_tap').value = p.zoom_in_to_tap || 0.8;
+    document.getElementById('p_zoom_out_survey').value = p.zoom_out_survey || 0.3;
+    document.getElementById('p_viewport_cleared').value = p.viewport_cleared || 0.85;
+    document.getElementById('p_recursive_solve').value = p.recursive_solve || 0.5;
+    document.getElementById('p_max_recursion').value = p.max_recursion || 2;
+    document.getElementById('p_memory').value = p.memory || 0.4;
+    document.getElementById('p_recheck').value = p.recheck || 0.15;
+    document.getElementById('p_board_scan').value = p.board_scan || 125;
+    document.getElementById('p_max_batch').value = p.max_batch || 4;
+    document.getElementById('p_frust_decay').value = p.frust_decay || 0.015;
+  }
 }
 
 function saveProfile() {
@@ -418,6 +590,21 @@ function saveProfile() {
   p.fatigue = +document.getElementById('p_fatigue').value;
   p.frustration = +document.getElementById('p_frustration').value;
   p.booster = +document.getElementById('p_booster').value;
+  // Advanced params
+  if (document.getElementById('p_initial_zoom')) {
+    p.initial_zoom = document.getElementById('p_initial_zoom').value;
+    p.preferred_zoom = document.getElementById('p_preferred_zoom').value;
+    p.zoom_in_to_tap = +document.getElementById('p_zoom_in_tap').value;
+    p.zoom_out_survey = +document.getElementById('p_zoom_out_survey').value;
+    p.viewport_cleared = +document.getElementById('p_viewport_cleared').value;
+    p.recursive_solve = +document.getElementById('p_recursive_solve').value;
+    p.max_recursion = +document.getElementById('p_max_recursion').value;
+    p.memory = +document.getElementById('p_memory').value;
+    p.recheck = +document.getElementById('p_recheck').value;
+    p.board_scan = +document.getElementById('p_board_scan').value;
+    p.max_batch = +document.getElementById('p_max_batch').value;
+    p.frust_decay = +document.getElementById('p_frust_decay').value;
+  }
   setStatus('Profile "' + profiles[currentProfile].name + '" saved.', 'done');
 }
 
@@ -442,7 +629,7 @@ function updateMix() {
 
 // ── Tabs ───────────────────────────────────────────────────
 function showTab(name) {
-  ['chart','table','config'].forEach(t => {
+  ['chart','table','compare','config'].forEach(t => {
     document.getElementById('tab_'+t).classList.toggle('hidden', t!==name);
   });
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -465,6 +652,7 @@ function buildConfig() {
     levelTo: +document.getElementById('levelTo').value,
     seed: +document.getElementById('seed').value,
     mode: document.getElementById('mode').value,
+    timing_multiplier: window._timingMultiplier || 1.0,
     profiles: profiles,
     mix: {
       methodical: +document.getElementById('mix_methodical').value / 100,
@@ -490,19 +678,19 @@ function copyConfig() {
   setStatus('Config copied to clipboard.', 'done');
 }
 
-// ── Simulation ─────────────────────────────────────────────
-let simStartTime = null;
-let simTimer = null;
+// ── Simulation (SSE streaming) ──────────────────────────────
+let lastRunConfig = null; // Track which config produced current results
 
-function updateRunningStatus() {
-  if (!simStartTime) return;
-  const elapsed = Math.round((Date.now() - simStartTime) / 1000);
-  const min = Math.floor(elapsed / 60);
-  const sec = elapsed % 60;
-  const timeStr = min > 0 ? `${min}m ${sec}s` : `${sec}s`;
+function setProgress(index, total, levelId, elapsed, eta) {
+  const pct = Math.round((index / total) * 100);
+  const elapsedStr = elapsed >= 60 ? `${Math.floor(elapsed/60)}m ${Math.round(elapsed%60)}s` : `${Math.round(elapsed)}s`;
+  const etaStr = eta >= 60 ? `${Math.floor(eta/60)}m ${Math.round(eta%60)}s` : `${Math.round(eta)}s`;
   setStatus(
-    `<span class="spinner"></span> Simulation running... ${timeStr} elapsed. ` +
-    `Check terminal for progress.`,
+    `<span class="spinner"></span> Simulating level ${index}/${total} (L${levelId})...` +
+    `<div class="progress-container">` +
+    `<div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%"></div></div>` +
+    `<div class="progress-detail"><span>${pct}% complete</span><span>${elapsedStr} elapsed</span><span>ETA ${etaStr}</span></div>` +
+    `</div>`,
     'running'
   );
 }
@@ -513,51 +701,92 @@ async function runSimulation() {
   btn.innerHTML = '<span class="spinner"></span>Running...';
 
   const config = buildConfig();
+  lastRunConfig = config;
   document.getElementById('configJson').textContent = JSON.stringify(config, null, 2);
 
-  // Estimate time
-  const levelCount = (config.levelTo - config.levelFrom + 1) || 30;
-  const cohort = config.cohort || 500;
-  const estSeconds = Math.round(levelCount * cohort * 0.0005 + 2);
-  setStatus(
-    `<span class="spinner"></span> Simulation starting... ` +
-    `L${config.levelFrom}–L${config.levelTo} × ${cohort} players. Estimated: ~${estSeconds}s. Check terminal for progress.`,
-    'running'
-  );
-
-  // Start elapsed timer
-  simStartTime = Date.now();
-  simTimer = setInterval(updateRunningStatus, 1000);
+  setStatus('<span class="spinner"></span> Connecting to simulation server...', 'running');
 
   try {
-    const resp = await fetch('/api/simulate', {
+    const resp = await fetch('/api/simulate-stream', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(config),
     });
 
-    clearInterval(simTimer);
-    simStartTime = null;
-
-    if (resp.ok) {
-      const elapsed = Math.round((Date.now() - (simStartTime || Date.now())) / 1000);
-      simResults = await resp.json();
-      renderResults(simResults);
-      // Refresh dataset info so reports list updates
-      await loadDatasets();
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({error: 'Unknown error'}));
+      setStatus(`Error: ${err.error || resp.statusText}`, 'error');
       btn.disabled = false;
       btn.innerHTML = 'Run Simulation';
       return;
-    } else {
-      const err = await resp.json().catch(() => ({error: 'Unknown error'}));
-      setStatus(`Error: ${err.error || resp.statusText}`, 'error');
     }
-  } catch(e) {
-    clearInterval(simTimer);
-    simStartTime = null;
 
+    // Read SSE stream
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let streamResults = null;
+    // Keep eventType across chunks — event: and data: may arrive in different reads
+    let currentEventType = null;
+
+    function processSSELine(line) {
+      if (line.startsWith('event: ')) {
+        currentEventType = line.slice(7).trim();
+      } else if (line.startsWith('data: ')) {
+        const eventData = line.slice(6);
+        if (currentEventType && eventData) {
+          try {
+            const data = JSON.parse(eventData);
+            if (currentEventType === 'start') {
+              setProgress(0, data.total, '-', 0, 0);
+            } else if (currentEventType === 'progress') {
+              setProgress(data.index, data.total, data.level, data.elapsed, data.eta);
+            } else if (currentEventType === 'done') {
+              streamResults = data;
+            } else if (currentEventType === 'error') {
+              setStatus(`Error: ${data.error}`, 'error');
+            }
+          } catch(e) {
+            console.warn('SSE parse error:', e, 'data:', eventData.slice(0, 200));
+          }
+        }
+        currentEventType = null;
+      } else if (line === '') {
+        // Empty line = event boundary, reset
+        currentEventType = null;
+      }
+    }
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // Split on newlines, keep last incomplete line in buffer
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        processSSELine(line);
+      }
+    }
+
+    // Process any remaining data in buffer after stream ends
+    if (buffer.trim()) {
+      processSSELine(buffer);
+    }
+
+    if (streamResults) {
+      simResults = streamResults;
+      renderResults(simResults);
+      await loadDatasets();
+    } else {
+      setStatus('Stream ended but no results received. Check server terminal for errors.', 'error');
+    }
+
+  } catch(e) {
     if (e.name === 'TypeError' && e.message.includes('fetch')) {
-      // No server running
       setStatus(
         'No API server detected. Start the server first:<br><br>' +
         '<code style="background:#e8e8e8;padding:4px 8px;border-radius:4px;">' +
@@ -587,8 +816,17 @@ function renderResults(data) {
     return;
   }
 
+  currentRows = rows.map(r => ({
+    ...r,
+    ratio: r.feed_avg > 0 ? (r.sim_avg / r.feed_avg) : 0
+  }));
+
   document.getElementById('summarySection').classList.remove('hidden');
   document.getElementById('resultTabs').classList.remove('hidden');
+  document.getElementById('saveRunSection').classList.remove('hidden');
+
+  // Show run context banner
+  updateRunContext(rows);
 
   // Summary
   const ratios = rows.filter(r => r.feed_avg > 0).map(r => r.sim_avg / r.feed_avg);
@@ -598,33 +836,49 @@ function renderResults(data) {
   const attDiffs = rows.map(r => (r.sim_att||0) - (r.feed_att||0));
   const avgAttDiff = attDiffs.length ? attDiffs.reduce((a,b)=>a+b,0)/attDiffs.length : 0;
 
+  // UI-03: Count outliers
+  const outlierCount = rows.filter(r => {
+    const ratio = r.feed_avg > 0 ? (r.sim_avg / r.feed_avg) : 0;
+    return ratio > 1.3 || ratio < 0.7;
+  }).length;
+
   document.getElementById('s_levels').textContent = rows.length;
   document.getElementById('s_timeRatio').textContent = avgRatio.toFixed(2) + 'x';
   document.getElementById('s_winDiff').textContent = (avgWrDiff>=0?'+':'') + (avgWrDiff*100).toFixed(2) + 'pp';
   document.getElementById('s_attDiff').textContent = (avgAttDiff>=0?'+':'') + avgAttDiff.toFixed(3);
+  document.getElementById('s_outliers').textContent = outlierCount;
 
   const ratioEl = document.getElementById('s_timeRatio');
   ratioEl.className = 'value ' + (avgRatio > 0.7 && avgRatio < 1.3 ? 'good' : avgRatio > 0.5 && avgRatio < 2 ? 'warn' : 'bad');
 
-  setStatus(`Simulation complete: ${rows.length} levels compared.`, 'done');
+  const elapsedStr = data.elapsed ? ` in ${data.elapsed}s` : '';
+  setStatus(`Simulation complete: ${rows.length} levels compared${elapsedStr}.`, 'done');
 
-  // Table
-  const tbody = document.getElementById('resultsBody');
-  tbody.innerHTML = '';
-  rows.forEach(r => {
-    const ratio = r.feed_avg > 0 ? (r.sim_avg/r.feed_avg) : 0;
-    const cls = ratio > 0.7 && ratio < 1.3 ? 'good' : ratio > 0.5 && ratio < 2 ? 'warn' : 'bad';
-    tbody.innerHTML += `<tr>
-      <td>${r.level}</td><td>${r.board||''}</td><td class="num">${r.arrows||''}</td>
-      <td class="num">${r.sim_avg.toFixed(2)}m</td><td class="num">${r.feed_avg.toFixed(2)}m</td>
-      <td class="num ${cls}">${ratio.toFixed(2)}</td>
-      <td class="num">${(r.sim_wr*100).toFixed(1)}%</td><td class="num">${(r.feed_wr*100).toFixed(1)}%</td>
-      <td class="num">${r.sim_att.toFixed(3)}</td><td class="num">${r.feed_att.toFixed(3)}</td>
-    </tr>`;
-  });
+  // UI-03: Render table with filtering/sorting
+  filterAndRenderTable();
+
+  // Update compare tab dropdowns
+  updateCompareDropdowns();
 
   // Plotly charts
   renderPlotlyCharts(rows);
+}
+
+function updateRunContext(rows) {
+  const ctx = document.getElementById('runContext');
+  if (!lastRunConfig) { ctx.classList.add('hidden'); return; }
+
+  const cfg = lastRunConfig;
+  const firstLvl = rows.length ? rows[0].level : '?';
+  const lastLvl = rows.length ? rows[rows.length - 1].level : '?';
+  const ts = new Date().toLocaleTimeString();
+
+  ctx.classList.remove('hidden');
+  ctx.innerHTML =
+    `<span class="tag">${cfg.version || 'current'}</span>` +
+    `L${firstLvl}–L${lastLvl} (${rows.length} levels) · ${cfg.cohort} players · seed ${cfg.seed}` +
+    (cfg.timing_multiplier && cfg.timing_multiplier !== 1.0 ? ` · multiplier ${cfg.timing_multiplier.toFixed(3)}` : '') +
+    `<span style="margin-left:auto;font-size:11px;color:var(--text-muted);">${ts}</span>`;
 }
 
 function renderPlotlyCharts(rows) {
@@ -639,14 +893,25 @@ function renderPlotlyCharts(rows) {
     xaxis: { title: 'Level', tickangle: -45, dtick: rows.length > 50 ? 10 : (rows.length > 20 ? 5 : 1) },
   };
 
-  // ── Chart 1: Avg Time (Sim vs Feed) with range slider ──
+  // Set chart context subtitles
+  const ctxLabel = lastRunConfig
+    ? `— ${lastRunConfig.version || 'current'} · L${rows[0]?.level || '?'}–L${rows[rows.length-1]?.level || '?'}`
+    : '';
+  ['chartCtxTime','chartCtxRatio','chartCtxWR','chartCtxDiff'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = ctxLabel;
+  });
+
+  // ── Chart 1: Avg Time (Sim vs Feed) — line chart with range slider ──
   Plotly.newPlot('plotlyTimeChart', [
-    { x: levelNums, y: rows.map(r => r.sim_avg), name: 'Simulator', type: 'bar',
-      marker: { color: '#4a6fa5' }, hovertemplate: 'L%{x}: %{y:.2f} min<extra>Sim</extra>' },
-    { x: levelNums, y: rows.map(r => r.feed_avg), name: 'Feed Data', type: 'bar',
-      marker: { color: '#f39c12', opacity: 0.7 }, hovertemplate: 'L%{x}: %{y:.2f} min<extra>Feed</extra>' },
+    { x: levelNums, y: rows.map(r => r.sim_avg), name: 'Simulator', type: 'scatter', mode: 'lines+markers',
+      line: { color: '#4a6fa5', width: 2 }, marker: { size: 5 },
+      hovertemplate: 'L%{x}: %{y:.2f} min<extra>Sim</extra>' },
+    { x: levelNums, y: rows.map(r => r.feed_avg), name: 'Feed Data', type: 'scatter', mode: 'lines+markers',
+      line: { color: '#f39c12', width: 2, dash: 'dot' }, marker: { size: 5 },
+      hovertemplate: 'L%{x}: %{y:.2f} min<extra>Feed</extra>' },
   ], {
-    ...baseLayout, barmode: 'group', bargap: 0.15, bargroupgap: 0.05,
+    ...baseLayout,
     yaxis: { title: 'Avg Time (min)' },
     xaxis: {
       ...baseLayout.xaxis,
@@ -694,12 +959,423 @@ function renderPlotlyCharts(rows) {
     yaxis: { title: 'Win Rate %', range: [0, 105] },
     legend: { orientation: 'h', y: 1.12, x: 0.5, xanchor: 'center' },
   }, plotlyConfig);
+
+  // ── Chart 4: Difficulty Curve (UI-10) ──
+  const diffColors = rows.map(r => {
+    const ratio = r.feed_avg > 0 ? r.sim_avg / r.feed_avg : 0;
+    return (ratio > 0.7 && ratio < 1.3) ? '#27ae60' : (ratio > 0.5 && ratio < 2) ? '#f39c12' : '#e74c3c';
+  });
+  Plotly.newPlot('plotlyDifficultyChart', [
+    { x: levelNums, y: rows.map(r => r.difficulty || 0), type: 'bar', name: 'Difficulty',
+      marker: { color: diffColors },
+      hovertemplate: 'L%{x}: Difficulty=%{y:.0f}<br>Board=%{customdata[0]}<br>Arrows=%{customdata[1]}<extra></extra>',
+      customdata: rows.map(r => [r.board||'N/A', r.arrows||'N/A']),
+      yaxis: 'y' },
+    { x: levelNums, y: rows.map(r => r.sim_avg), type: 'scatter', mode: 'lines', name: 'Sim Avg Time',
+      line: { color: '#4a6fa5', width: 2 },
+      hovertemplate: 'L%{x}: %{y:.2f}m<extra></extra>',
+      yaxis: 'y2' }
+  ], {
+    ...baseLayout,
+    yaxis: { title: 'Difficulty Score' },
+    yaxis2: { title: 'Avg Time (min)', overlaying: 'y', side: 'right' },
+    legend: { orientation: 'h', y: 1.12, x: 0.5, xanchor: 'center' },
+  }, plotlyConfig);
+}
+
+// ── UI-03: Sorting & Filtering ─────────────────────────────
+function sortTable(column, isString = false) {
+  if (currentSortColumn === column) {
+    currentSortAscending = !currentSortAscending;
+  } else {
+    currentSortColumn = column;
+    currentSortAscending = true;
+  }
+  filterAndRenderTable();
+}
+
+function filterAndRenderTable() {
+  const filterRatio = document.getElementById('filterRatio').value;
+  const filterLevel = document.getElementById('filterLevelRange').value;
+
+  let filtered = currentRows.slice();
+
+  // Apply ratio filter
+  if (filterRatio === 'wayoff') {
+    filtered = filtered.filter(r => r.ratio > 2 || r.ratio < 0.5);
+  } else if (filterRatio === 'offtrack') {
+    filtered = filtered.filter(r => r.ratio > 1.3 || r.ratio < 0.7);
+  }
+
+  // Apply level range filter
+  if (filterLevel) {
+    const parts = filterLevel.split('-').map(p => parseInt(p.trim()));
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      filtered = filtered.filter(r => r.level >= parts[0] && r.level <= parts[1]);
+    }
+  }
+
+  // Apply sorting
+  if (currentSortColumn) {
+    filtered.sort((a, b) => {
+      let aVal = a[currentSortColumn];
+      let bVal = b[currentSortColumn];
+      if (typeof aVal === 'string') {
+        aVal = aVal || '';
+        bVal = bVal || '';
+        return currentSortAscending ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      aVal = aVal || 0;
+      bVal = bVal || 0;
+      return currentSortAscending ? (aVal - bVal) : (bVal - aVal);
+    });
+  }
+
+  // Render table
+  const tbody = document.getElementById('resultsBody');
+  tbody.innerHTML = '';
+  filtered.forEach(r => {
+    const isDanger = r.ratio > 2 || r.ratio < 0.5;
+    const isWarn = r.ratio > 1.3 || r.ratio < 0.7;
+    const rowClass = isDanger ? 'row-danger' : (isWarn ? 'row-warn' : '');
+    const cls = r.ratio > 0.7 && r.ratio < 1.3 ? 'good' : r.ratio > 0.5 && r.ratio < 2 ? 'warn' : 'bad';
+    tbody.innerHTML += `<tr class="${rowClass}">
+      <td>${r.level}</td><td>${r.board||''}</td><td class="num">${r.arrows||''}</td>
+      <td class="num">${r.sim_avg.toFixed(2)}m</td><td class="num">${r.feed_avg.toFixed(2)}m</td>
+      <td class="num ${cls}">${r.ratio.toFixed(2)}</td>
+      <td class="num">${(r.sim_wr*100).toFixed(1)}%</td><td class="num">${(r.feed_wr*100).toFixed(1)}%</td>
+      <td class="num">${r.sim_att.toFixed(3)}</td><td class="num">${r.feed_att.toFixed(3)}</td>
+    </tr>`;
+  });
+}
+
+function filterByOutliers() {
+  document.getElementById('filterRatio').value = 'offtrack';
+  filterAndRenderTable();
+  showTab('table');
+}
+
+// ── UI-02: Save Run functionality ──────────────────────────
+function showSaveRunDialog() {
+  const label = prompt('Enter a label for this run:', 'Run ' + (savedRuns.length + 1));
+  if (label !== null && label.trim()) {
+    saveRun(label.trim());
+  }
+}
+
+function saveRun(label) {
+  const run = {
+    label: label,
+    timestamp: new Date().toLocaleString(),
+    config: buildConfig(),
+    results: currentRows.map(r => ({
+      level: r.level,
+      board: r.board,
+      arrows: r.arrows,
+      sim_avg: r.sim_avg,
+      feed_avg: r.feed_avg,
+      sim_wr: r.sim_wr,
+      feed_wr: r.feed_wr,
+      sim_att: r.sim_att,
+      feed_att: r.feed_att,
+      difficulty: r.difficulty
+    }))
+  };
+  savedRuns.push(run);
+  updateSavedRunsDisplay();
+  setStatus(`Run "${label}" saved.`, 'done');
+}
+
+function updateSavedRunsDisplay() {
+  const section = document.getElementById('savedRunsSection');
+  const list = document.getElementById('savedRunsList');
+
+  if (!savedRuns.length) {
+    section.classList.add('hidden');
+    return;
+  }
+
+  section.classList.remove('hidden');
+  list.innerHTML = '';
+  savedRuns.forEach((run, idx) => {
+    const item = document.createElement('div');
+    item.className = 'run-item';
+    item.innerHTML = `
+      <input type="text" value="${run.label}" onchange="updateRunLabel(${idx}, this.value)">
+      <span style="font-size:12px;color:var(--text-muted);">${run.timestamp}</span>
+      <button class="btn btn-outline btn-sm" onclick="deleteRun(${idx})">Delete</button>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function updateRunLabel(idx, newLabel) {
+  if (idx < savedRuns.length && newLabel.trim()) {
+    savedRuns[idx].label = newLabel.trim();
+    updateCompareDropdowns();
+  }
+}
+
+function deleteRun(idx) {
+  if (confirm(`Delete run "${savedRuns[idx].label}"?`)) {
+    savedRuns.splice(idx, 1);
+    updateSavedRunsDisplay();
+    updateCompareDropdowns();
+  }
+}
+
+// ── UI-02: Compare functionality ───────────────────────────
+function updateCompareDropdowns() {
+  const dropA = document.getElementById('compareRunA');
+  const dropB = document.getElementById('compareRunB');
+
+  dropA.innerHTML = '';
+  dropB.innerHTML = '';
+
+  savedRuns.forEach((run, idx) => {
+    const opt = document.createElement('option');
+    opt.value = idx;
+    opt.textContent = run.label + ' (' + run.timestamp + ')';
+    dropA.appendChild(opt.cloneNode(true));
+    dropB.appendChild(opt);
+  });
+
+  if (savedRuns.length > 1) {
+    dropB.selectedIndex = 1;
+  }
+}
+
+function doCompare() {
+  const idxA = parseInt(document.getElementById('compareRunA').value);
+  const idxB = parseInt(document.getElementById('compareRunB').value);
+
+  if (isNaN(idxA) || isNaN(idxB) || !savedRuns[idxA] || !savedRuns[idxB]) {
+    alert('Please select two valid runs.');
+    return;
+  }
+
+  const runA = savedRuns[idxA];
+  const runB = savedRuns[idxB];
+  const resultsDiv = document.getElementById('compareResults');
+
+  // Overlay chart
+  const levels = runA.results.map(r => r.level);
+  const timeA = runA.results.map(r => r.sim_avg);
+  const timeB = runB.results.map(r => r.sim_avg);
+
+  const plotlyConfig = { responsive: true, displayModeBar: true };
+  const baseLayout = {
+    font: { family: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif', size: 12 },
+    paper_bgcolor: 'transparent', plot_bgcolor: '#fafbfc',
+    margin: { l: 50, r: 20, t: 30, b: 50 },
+    hovermode: 'x unified',
+    xaxis: { title: 'Level' },
+    yaxis: { title: 'Avg Time (min)' },
+  };
+
+  Plotly.newPlot('compareChart', [
+    { x: levels, y: timeA, type: 'scatter', mode: 'lines+markers', name: runA.label, line: { color: '#4a6fa5', width: 2 } },
+    { x: levels, y: timeB, type: 'scatter', mode: 'lines+markers', name: runB.label, line: { color: '#e74c3c', width: 2 } },
+  ], baseLayout, plotlyConfig);
+
+  // Diff table
+  let tableHtml = `
+    <h3 style="margin-top:16px;margin-bottom:8px;">Level Comparison</h3>
+    <div style="overflow-x:auto;">
+    <table style="width:100%;font-size:12px;border-collapse:collapse;">
+      <thead><tr style="background:var(--accent-light);">
+        <th style="padding:6px;text-align:left;">Level</th>
+        <th style="padding:6px;text-align:right;">${runA.label}</th>
+        <th style="padding:6px;text-align:right;">${runB.label}</th>
+        <th style="padding:6px;text-align:right;">Delta (B-A)</th>
+      </tr></thead>
+      <tbody>
+  `;
+
+  runA.results.forEach((rA, idx) => {
+    const rB = runB.results[idx];
+    if (!rB) return;
+    const delta = rB.sim_avg - rA.sim_avg;
+    const deltaStr = delta >= 0 ? '+' : '';
+    tableHtml += `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:6px;">${rA.level}</td>
+      <td style="padding:6px;text-align:right;">${rA.sim_avg.toFixed(2)}m</td>
+      <td style="padding:6px;text-align:right;">${rB.sim_avg.toFixed(2)}m</td>
+      <td style="padding:6px;text-align:right;color:${delta < 0 ? 'var(--success)' : 'var(--danger)'};">${deltaStr}${delta.toFixed(2)}m</td>
+    </tr>`;
+  });
+
+  const avgA = runA.results.reduce((s, r) => s + r.sim_avg, 0) / runA.results.length;
+  const avgB = runB.results.reduce((s, r) => s + r.sim_avg, 0) / runB.results.length;
+  const avgDelta = avgB - avgA;
+  const percent = ((avgDelta / avgA) * 100).toFixed(1);
+  const summary = avgDelta < 0
+    ? `${runB.label} is ${Math.abs(percent)}% faster than ${runA.label} on average.`
+    : `${runB.label} is ${percent}% slower than ${runA.label} on average.`;
+
+  tableHtml += `</tbody></table></div>
+    <p style="margin-top:12px;padding:10px;background:var(--accent-light);border-radius:6px;font-size:13px;"><strong>Summary:</strong> ${summary}</p>
+  `;
+
+  resultsDiv.innerHTML = `<div id="compareChart" style="width:100%;height:350px;"></div>` + tableHtml;
+  Plotly.newPlot('compareChart', [
+    { x: levels, y: timeA, type: 'scatter', mode: 'lines+markers', name: runA.label, line: { color: '#4a6fa5', width: 2 } },
+    { x: levels, y: timeB, type: 'scatter', mode: 'lines+markers', name: runB.label, line: { color: '#e74c3c', width: 2 } },
+  ], baseLayout, plotlyConfig);
+  resultsDiv.innerHTML += tableHtml;
+}
+
+// ── UI-09: Presets functionality ───────────────────────────
+function savePresetDialog() {
+  const name = prompt('Enter preset name:', '');
+  if (name !== null && name.trim()) {
+    savePreset(name.trim());
+  }
+}
+
+function savePreset(name) {
+  if (savedPresets.some(p => p.name === name && p.name !== 'Default')) {
+    if (!confirm(`Overwrite preset "${name}"?`)) return;
+    const idx = savedPresets.findIndex(p => p.name === name);
+    savedPresets.splice(idx, 1);
+  }
+
+  const preset = {
+    name: name,
+    config: buildConfig()
+  };
+  savedPresets.push(preset);
+  updatePresetsDropdown();
+  setStatus(`Preset "${name}" saved.`, 'done');
+}
+
+function updatePresetsDropdown() {
+  const dropdown = document.getElementById('presetsDropdown');
+  dropdown.innerHTML = '';
+  savedPresets.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.name;
+    opt.textContent = p.name;
+    dropdown.appendChild(opt);
+  });
+}
+
+function loadPreset() {
+  const name = document.getElementById('presetsDropdown').value;
+  const preset = savedPresets.find(p => p.name === name);
+  if (!preset || !preset.config) {
+    alert('Cannot load this preset.');
+    return;
+  }
+
+  const cfg = preset.config;
+  document.getElementById('cohort').value = cfg.cohort;
+  document.getElementById('seed').value = cfg.seed;
+  document.getElementById('levelFrom').value = cfg.levelFrom;
+  document.getElementById('levelTo').value = cfg.levelTo;
+  document.getElementById('mode').value = cfg.mode;
+
+  // Load mix
+  document.getElementById('mix_methodical').value = Math.round(cfg.mix.methodical * 100);
+  document.getElementById('mix_scanner').value = Math.round(cfg.mix.scanner * 100);
+  document.getElementById('mix_comfortable').value = Math.round(cfg.mix.comfortable * 100);
+  document.getElementById('mix_struggler').value = Math.round(cfg.mix.struggler * 100);
+  updateMix();
+
+  // Load profiles
+  profiles = JSON.parse(JSON.stringify(cfg.profiles));
+  loadProfileToUI(currentProfile);
+
+  // Load booster
+  document.getElementById('b_enabled').checked = cfg.booster.enabled;
+  document.getElementById('b_hint').value = cfg.booster.hint_per_attempt;
+  document.getElementById('b_scissors').value = cfg.booster.scissors_per_attempt;
+  document.getElementById('b_wand').value = cfg.booster.wand_per_attempt;
+
+  // Load overhead
+  document.getElementById('o_load').value = cfg.overhead.level_load_time_ms;
+  document.getElementById('o_win').value = cfg.overhead.win_celebration_ms;
+
+  setStatus(`Preset "${name}" loaded.`, 'done');
+}
+
+// ── UI-06: Auto-Calibrate ─────────────────────────────────
+async function autoCalibrate() {
+  const btn = document.getElementById('calibrateBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Calibrating...';
+
+  const config = buildConfig();
+  const maxIters = 8;
+  let multiplier = 1.0;
+  let bestM = 1.0, bestErr = Infinity;
+
+  try {
+    for (let iter = 0; iter < maxIters; iter++) {
+      setStatus(`🎯 Auto-calibrating: iteration ${iter+1}/${maxIters}, multiplier=${multiplier.toFixed(4)}...`, 'running');
+
+      config.timing_multiplier = multiplier;
+      const resp = await fetch('/api/simulate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(config),
+      });
+
+      if (!resp.ok) throw new Error('Simulation failed');
+      const data = await resp.json();
+
+      const rows = data.levels || [];
+      const ratios = rows.filter(r => r.feed_avg > 0).map(r => r.sim_avg / r.feed_avg);
+      if (!ratios.length) break;
+
+      const avgRatio = ratios.reduce((a,b) => a+b, 0) / ratios.length;
+      const err = Math.abs(1.0 - avgRatio);
+
+      if (err < bestErr) { bestM = multiplier; bestErr = err; }
+      if (err < 0.02) break; // within 2%
+
+      multiplier = multiplier / avgRatio;
+    }
+
+    setStatus(
+      `🎯 Auto-calibration done! Best timing_multiplier = <strong>${bestM.toFixed(4)}</strong> (error: ${(bestErr*100).toFixed(1)}%). ` +
+      `<button class="btn btn-sm btn-outline" onclick="applyMultiplier(${bestM})">Apply</button>`,
+      'done'
+    );
+  } catch(e) {
+    setStatus(`Auto-calibration error: ${e.message}`, 'error');
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🎯 Auto-Cal';
+}
+
+function applyMultiplier(m) {
+  window._timingMultiplier = m;
+  setStatus(`Applied timing_multiplier = ${m.toFixed(4)}. Re-run simulation to see effect.`, 'done');
+}
+
+// ── UI-07: Export CSV ──────────────────────────────────────
+function exportCSV() {
+  if (!currentRows || !currentRows.length) return;
+  const header = 'Level,Board,Arrows,Sim Avg (min),Feed Avg (min),Ratio,Sim WR,Feed WR,Sim Attempts,Feed Attempts,Difficulty';
+  const lines = currentRows.map(r => {
+    const ratio = r.feed_avg > 0 ? (r.sim_avg/r.feed_avg).toFixed(3) : '0';
+    return `${r.level},${r.board||''},${r.arrows||''},${r.sim_avg.toFixed(3)},${r.feed_avg.toFixed(3)},${ratio},${r.sim_wr.toFixed(4)},${r.feed_wr.toFixed(4)},${r.sim_att.toFixed(3)},${r.feed_att.toFixed(3)},${(r.difficulty||0).toFixed(4)}`;
+  });
+  const csv = [header, ...lines].join('\n');
+  const blob = new Blob([csv], {type: 'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'simulation_results.csv';
+  a.click();
 }
 
 // ── Init ───────────────────────────────────────────────────
 loadProfileToUI('methodical');
 updateMix();
 loadDatasets();
+updatePresetsDropdown();
 </script>
 </body>
 </html>

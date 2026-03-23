@@ -472,6 +472,305 @@ Kiến trúc mới dùng `AttemptResult` (user_model.py) và `LevelResult` (user
 
 ---
 
+# UI POLISH — ĐỀ XUẤT TOÀN DIỆN
+
+> **Tác giả**: Suggester | **Ngày**: 2026-03-22
+>
+> **Bối cảnh**: Backend đã ổn định (S-01→S-22 xong). Giờ là lúc UI phải phục vụ đúng workflow của Game Designer: **chạy sim → so sánh feed → phát hiện vấn đề → điều chỉnh → re-run**. Mỗi đề xuất UI kèm backend API cần thiết.
+
+---
+
+## PHÂN TÍCH UI HIỆN TẠI
+
+### Có gì:
+- Left panel 340px: Version selector, Sim settings, Player mix sliders, Profile editor (8 params), Booster config, Level overhead, Run button
+- Right panel: Status bar, 4 summary cards (Levels, Avg Time Ratio, Win Rate Diff, Attempt Diff), 3 tabs (Chart / Table / Config JSON)
+- Charts: Avg Time bar (sim vs feed + range slider), Time Ratio bar (color-coded), Win Rate line
+- API: `GET /api/datasets`, `POST /api/simulate`
+
+### Thiếu gì (theo workflow Game Designer):
+
+| Workflow step | Hiện tại | Thiếu |
+|---------------|----------|-------|
+| "Level nào có vấn đề?" | Bảng + chart — phải tự đọc từng dòng | Không sort/filter được. Không highlight outlier tự động |
+| "Profile nào gây mismatch?" | Không có | Per-profile breakdown hoàn toàn thiếu |
+| "Thay param X thì sao?" | Chạy lại, kết quả cũ mất | Không so sánh 2 runs. Không biết thay đổi gì |
+| "Level 15 cụ thể bị gì?" | Chỉ thấy avg time + WR | Không có detail: attempt distribution, fail reasons, booster usage |
+| "Cohort churn ở đâu?" | Mode dropdown có nhưng không hoạt động | Không có retention funnel, churn chart |
+| "Export cho team review" | Copy JSON config — không export results | Không xuất CSV/Excel từ UI |
+| "Nhanh calibrate thử" | CLI only (calibrate.py --auto) | Không có auto-calibrate button |
+
+---
+
+## UI-01: Level Drill-Down — Click level để xem chi tiết
+
+> 🔴 **Critical cho workflow** | **Effort**: Trung bình
+
+### UI:
+- Table row clickable → mở panel/modal **Level Detail**
+- Nội dung:
+  - **Board info**: size, arrows, difficulty score, min_solvable_per_iteration, max_depth
+  - **Per-profile breakdown**: bảng 4 dòng (Methodical/Scanner/Comfortable/Struggler) × cột (avg_time, win_rate, avg_attempts, fail_rate)
+  - **Attempt distribution**: histogram (1 att, 2 att, 3 att...) — sim vs feed nếu có
+  - **Fail reasons pie**: % frustration / % timeout / % exhausted
+  - **Booster usage**: avg hint/scissors/wand used per player
+
+### Backend:
+```
+POST /api/simulate-detail
+Body: { level_id, version, cohort, seed, profiles, mix, booster, overhead }
+Response: {
+  board: { width, height, arrows, difficulty, min_solvable, max_depth },
+  per_profile: {
+    methodical: { avg_time, win_rate, avg_attempts, fail_rate, n_players },
+    scanner: {...}, comfortable: {...}, struggler: {...}
+  },
+  attempt_distribution: { "1": 340, "2": 98, "3": 42, "4": 15, "5": 5 },
+  fail_reasons: { frustration: 38, timeout: 12, exhausted: 10 },
+  booster_usage: { hints_avg: 1.2, scissors_avg: 0.4, wand_avg: 0.1 }
+}
+```
+**Thay đổi backend**: `runner.py::simulate_level()` cần trả thêm per-profile stats + attempt detail. Tách logic chung ra thành `simulate_level_detailed()`.
+
+---
+
+## UI-02: Run Comparison — So sánh 2+ lần chạy
+
+> 🔴 **Critical cho workflow** | **Effort**: Trung bình
+
+### UI:
+- Button **"Save Run"** sau mỗi simulation → lưu `{ label, config, results, timestamp }` vào `localStorage` / JS array
+- **Saved Runs** panel dưới summary: danh sách runs với label editable + delete button
+- Tab **"Compare"** mới (cạnh Chart/Table/Config):
+  - Dropdown chọn 2 runs
+  - Overlay chart: 2 đường sim trên cùng chart, feed data làm baseline
+  - Diff table: mỗi dòng = 1 level, cột = Run A time / Run B time / delta / Run A WR / Run B WR / delta
+  - Summary diff: "Run B trung bình nhanh hơn 12% so với Run A"
+
+### Backend:
+Không cần API mới — comparison xử lý hoàn toàn client-side. Kết quả đã lưu trong JS memory.
+
+---
+
+## UI-03: Outlier Highlighting + Sort/Filter
+
+> 🟡 **Important** | **Effort**: Thấp
+
+### UI:
+- Table header clickable → sort bất kỳ cột nào (ascending/descending)
+- Filter row phía trên table:
+  - **Ratio filter**: dropdown "All / Off-track (>1.3x or <0.7x) / Way off (>2x or <0.5x)"
+  - **Level range**: quick filter text input "15-25"
+- Auto-highlight hàng: nền đỏ nhạt cho ratio >2x hoặc <0.5x, vàng nhạt cho >1.3x hoặc <0.7x
+- Summary card **"Outliers"**: số level off-track, clickable → filter table
+
+### Backend: Không cần — client-side JS.
+
+---
+
+## UI-04: Cohort Mode Integration
+
+> 🟡 **Important** | **Effort**: Cao (= S-12 mở rộng)
+
+### UI:
+Khi chọn Mode = "Cohort":
+- **Retention Funnel chart**: bar chart giảm dần — mỗi bar = % cohort còn lại ở level N
+- **Churn Breakdown chart**: stacked bar — mỗi level có 3 phần: during_churn + between_churn + active
+- **Playtime Curve**: cumulative avg time — dùng để estimate "total session length trung bình"
+- **Engagement Heatmap**: level × perceived_difficulty → color = engagement score
+- Summary cards thay đổi: thêm "Retention L10", "Avg Quit Level", "Median Session Time"
+
+### Backend:
+```
+POST /api/simulate-cohort
+Body: { version, cohort, seed, profiles, mix, booster, overhead, levelFrom, levelTo }
+Response: {
+  levels: [...],  // giống per-level nhưng thêm retention metrics
+  funnel: [
+    { level: 1, started: 4936, completed: 4820, churned_during: 40, churned_between: 76 },
+    { level: 2, started: 4744, ... },
+    ...
+  ],
+  summary: {
+    retention_l10: 0.82,
+    avg_quit_level: 28.5,
+    median_session_minutes: 45.2
+  }
+}
+```
+**Thay đổi backend**: Kết nối `CohortSimulator` vào `server.py`. Cần endpoint mới hoặc branch logic trong `/api/simulate` dựa trên `mode`.
+
+---
+
+## UI-05: Advanced Profile Editor
+
+> 🟡 **Important** | **Effort**: Trung bình (= S-10 chi tiết hóa)
+
+### UI:
+- Giữ 8 basic params như hiện tại
+- Thêm toggle **"Show Advanced"** → mở section ẩn với các param nhóm:
+
+**Zoom & Viewport:**
+| Param | Field ID | Default range |
+|-------|----------|---------------|
+| Initial zoom | `p_initial_zoom` | "in" / "out" |
+| Preferred zoom | `p_preferred_zoom` | "in" / "out" / "adaptive" |
+| Zoom-in-to-tap prob | `p_zoom_in_tap` | 0–1 |
+| Zoom-out survey prob | `p_zoom_out_survey` | 0–1 |
+| Viewport cleared zoom-out prob | `p_viewport_cleared` | 0–1 |
+
+**Cognition:**
+| Param | Field ID | Default range |
+|-------|----------|---------------|
+| Recursive solve prob | `p_recursive_solve` | 0–1 |
+| Max recursion depth | `p_max_recursion` | 0–5 |
+| Memory probability | `p_memory` | 0–1 |
+| Recheck probability | `p_recheck` | 0–1 |
+
+**Effort & Quit:**
+| Param | Field ID | Default range |
+|-------|----------|---------------|
+| Board scan time | `p_board_scan` | ms |
+| Max batch before pan | `p_max_batch` | 1–10 |
+| Frustration decay after solve | `p_frust_decay` | 0–0.1 |
+
+### Backend:
+`server.py::handle_simulate()` cần map thêm advanced params từ request body vào `PlayerProfile` fields. Hiện tại chỉ map 8 fields (dòng 157–164).
+
+---
+
+## UI-06: Auto-Calibrate từ UI
+
+> 🟡 **Important** | **Effort**: Trung bình
+
+### UI:
+- Button **"Auto-Calibrate"** cạnh "Run Simulation"
+- Click → chạy binary search trên `timing_multiplier` (logic từ calibrate.py)
+- Progress bar: "Iteration 3/10 — ratio 1.08x — adjusting..."
+- Kết quả: hiển thị `timing_multiplier` tìm được + auto-fill vào config
+- Optional: checkbox "Also calibrate win_rate" → adjust `frustration_buildup_rate`
+
+### Backend:
+```
+POST /api/auto-calibrate
+Body: { version, cohort, seed, profiles, mix, target_metrics: ["avg_time", "win_rate"], max_iters: 10 }
+Response: {
+  timing_multiplier: 0.87,
+  iterations: 5,
+  final_ratio: 1.02,
+  adjustments: { timing_multiplier: "1.0 → 0.87" }
+}
+```
+**Thay đổi backend**: Extract auto-calibration loop từ `calibrate.py` vào `src/runner.py` hoặc `src/calibrator.py`, expose qua server.
+
+---
+
+## UI-07: Export Results
+
+> 🟢 **Nice-to-have** | **Effort**: Thấp
+
+### UI:
+- Button **"Export CSV"** ở góc phải tab Table
+- Button **"Export All Charts"** → download PNG/SVG của tất cả charts (Plotly built-in)
+- Auto-save đã có (server ghi CSV vào `report/`), nhưng UI nên show link download trực tiếp
+
+### Backend:
+- Server đã auto-save CSV. Thêm endpoint:
+```
+GET /api/report/{version}/{filename}
+```
+- UI tạo download link sau mỗi run: `<a href="/api/report/v1.8.0/Sim_Level_playtime.csv">Download Playtime CSV</a>`
+
+---
+
+## UI-08: Real-time Progress Streaming
+
+> 🟢 **Nice-to-have** | **Effort**: Trung bình
+
+### UI:
+- Thay status bar "check terminal" bằng progress bar thực
+- Hiển thị: `Level 15/30 — L142 — 12.3s elapsed — ETA 8s`
+- Mini-chart cập nhật live: mỗi level xong → thêm 1 bar vào chart
+
+### Backend:
+2 phương án:
+
+**A. Server-Sent Events (SSE)** — đơn giản hơn:
+```
+POST /api/simulate → trả về stream
+data: {"type":"progress", "level":15, "total":30, "level_id":142, "elapsed":12.3}
+data: {"type":"result", "level":142, "sim_avg":0.45, "feed_avg":0.52}
+...
+data: {"type":"done", "summary":{...}}
+```
+
+**B. Polling** — dễ implement hơn:
+```
+POST /api/simulate → trả về job_id ngay
+GET /api/simulate-status/{job_id} → { progress: 15, total: 30, partial_results: [...] }
+```
+
+**Recommendation**: SSE (phương án A) — `http.server` hỗ trợ sẵn, client dùng `EventSource`.
+
+---
+
+## UI-09: Config Presets — Save/Load cấu hình
+
+> 🟢 **Nice-to-have** | **Effort**: Thấp
+
+### UI:
+- Dropdown **"Presets"** bên cạnh "Run Simulation"
+- Options: "Default", "Fast Scanner Heavy", "Struggler Focus", "Custom 1", "Custom 2"
+- Buttons: "Save as Preset" (nhập tên) / "Load Preset"
+- Presets lưu toàn bộ config (profiles + mix + booster + overhead + level range)
+
+### Backend: Không cần — lưu client-side trong JS. Hoặc nếu muốn persist:
+```
+GET  /api/presets → [{ name, config }]
+POST /api/presets → save preset
+```
+File-based storage: `data/presets/*.json`
+
+---
+
+## UI-10: Difficulty Score Visualization
+
+> 🟢 **Nice-to-have** | **Effort**: Thấp
+
+### UI:
+- Chart mới trong tab Chart: **"Difficulty Curve"**
+- X = level, Y = difficulty_score (từ `compute_level_metrics`)
+- Overlay: sim_avg_time trend line — để thấy correlation difficulty ↔ playtime
+- Color-code points: xanh = ratio OK, đỏ = sim deviates from feed
+- Tooltip: board size, arrow count, min_solvable, max_depth
+
+### Backend:
+`/api/simulate` response đã có `difficulty` field per level. Chỉ cần thêm chart client-side.
+
+---
+
+## THỨ TỰ TRIỂN KHAI ĐỀ XUẤT
+
+Dựa trên impact cho workflow Game Designer × effort:
+
+### Phase 1 — Quick wins (client-side only, không cần backend mới)
+1. **UI-03** Outlier highlight + sort/filter table *(Thấp effort, dùng ngay)*
+2. **UI-02** Run comparison *(Trung bình effort, giải quyết pain point lớn nhất)*
+3. **UI-10** Difficulty curve chart *(Thấp effort, data đã có)*
+4. **UI-09** Config presets *(Thấp effort, tiện dụng)*
+
+### Phase 2 — Backend additions
+5. **UI-05** Advanced profile editor *(Mở rộng server mapping)*
+6. **UI-07** Export CSV + download links *(Thêm 1 endpoint đơn giản)*
+7. **UI-06** Auto-calibrate button *(Extract logic từ calibrate.py)*
+
+### Phase 3 — Major features
+8. **UI-01** Level drill-down *(Endpoint mới + refactor runner.py)*
+9. **UI-04** Cohort mode integration *(Kết nối CohortSimulator + UI charts mới)*
+10. **UI-08** Real-time progress *(SSE hoặc polling — thay đổi request flow)*
+
+---
+
 ## TỔNG KẾT HÀNH ĐỘNG
 
 | # | Mức độ | Mô tả ngắn | Effort | Trạng thái |
@@ -485,8 +784,8 @@ Kiến trúc mới dùng `AttemptResult` (user_model.py) và `LevelResult` (user
 | S-07 | 🟡 | Implement/xóa unused params | Trung bình | ✅ Done |
 | S-08 | 🟡 | Optimize _rebuild_occupied | Trung bình | ✅ Done |
 | S-09 | 🟡 | Implement auto-calibration | Cao | ✅ Done |
-| S-10 | 🟢 | UI advanced profile editor | Trung bình | ⬚ Pending |
-| S-11 | 🟢 | UI run comparison | Cao | ⬚ Pending |
+| S-10 | 🟢 | UI advanced profile editor | Trung bình | ✅ Done (→ UI-05) |
+| S-11 | 🟢 | UI run comparison | Cao | ✅ Done (→ UI-02) |
 | S-12 | 🟢 | Kết nối cohort mode vào UI | Trung bình | ⬚ Pending |
 | S-13 | 🟢 | Phân biệt churn_rate vs fail_rate | Thấp | ✅ Done |
 | S-14 | 🟢 | Thêm unit tests | Cao | ⬚ Pending |
@@ -498,6 +797,16 @@ Kiến trúc mới dùng `AttemptResult` (user_model.py) và `LevelResult` (user
 | S-20 | 🟡 | S-08 incremental occupied chưa thật sự nhanh hơn, cần reverse index | Trung bình | ✅ Done |
 | S-21 | 🟡 | Booster activation không nhân fatigue | Thấp | ✅ Done |
 | S-22 | 🟡 | StepEvent + SimulationResult dead dataclass | Thấp | ✅ Done |
+| UI-01 | 🔴 | Level drill-down (click level → detail) | Trung bình | ⬚ Phase 3 |
+| UI-02 | 🔴 | Run comparison (save + overlay 2 runs) | Trung bình | ✅ Done |
+| UI-03 | 🟡 | Outlier highlight + sort/filter table | Thấp | ✅ Done |
+| UI-04 | 🟡 | Cohort mode integration (funnel, churn chart) | Cao | ⬚ Phase 3 |
+| UI-05 | 🟡 | Advanced profile editor (20+ params) | Trung bình | ✅ Done |
+| UI-06 | 🟡 | Auto-calibrate button từ UI | Trung bình | ✅ Done |
+| UI-07 | 🟢 | Export CSV + download links | Thấp | ✅ Done |
+| UI-08 | 🟢 | Real-time progress streaming (SSE) | Trung bình | ✅ Done |
+| UI-09 | 🟢 | Config presets save/load | Thấp | ✅ Done |
+| UI-10 | 🟢 | Difficulty score curve chart | Thấp | ✅ Done |
 
 ---
 
@@ -560,11 +869,95 @@ Kiến trúc mới dùng `AttemptResult` (user_model.py) và `LevelResult` (user
 
 **S-21** `src/game_adapter.py` dòng 396, 404, 412 — Booster activation time giờ nhân `self.user.fatigue()`, consistent với mọi thao tác timing khác trong sim.
 
-**Còn lại (4 items pending — tất cả 🟢 Nice-to-have):**
-- S-10: UI advanced profile editor — cần thiết kế UI/UX trước
-- S-11: UI run comparison/snapshot — feature mới, effort cao
+**Còn lại (2 items pending — tất cả 🟢 Nice-to-have):**
+- ~~S-10: UI advanced profile editor~~ → ✅ Done (batch 3: UI-05)
+- ~~S-11: UI run comparison/snapshot~~ → ✅ Done (batch 3: UI-02)
 - S-12: Kết nối cohort mode vào server API — cần thêm endpoint + UI chart
 - S-14: Unit tests — nên làm khi code ổn định
+
+### 2026-03-22 — Dev (batch 3: UI Polish)
+
+**7 UI items hoàn thành (UI-02, UI-03, UI-05, UI-06, UI-07, UI-09, UI-10). Cũng hoàn thành S-10 (→ UI-05) và S-11 (→ UI-02). Chi tiết thay đổi:**
+
+**Phase 1 — Client-side only:**
+
+**UI-03** `ui.html` — Sort/filter table + outlier highlighting:
+- Table header clickable → sort ascending/descending bất kỳ cột nào
+- Filter dropdown: "All / Off-track (>1.3x or <0.7x) / Way off (>2x or <0.5x)"
+- Level range filter input (format "15-25")
+- Auto-highlight: hàng đỏ nhạt cho ratio >2x hoặc <0.5x, vàng nhạt cho >1.3x hoặc <0.7x (CSS class `row-danger`, `row-warn`)
+- Summary card "Outliers" hiển thị số level off-track
+
+**UI-02** `ui.html` — Run comparison:
+- Button "Save Run" lưu `{ label, config, results, timestamp }` vào JS array `savedRuns`
+- Tab "Compare" mới: dropdown chọn 2 runs, overlay chart (2 đường sim trên cùng chart + feed baseline), diff table mỗi dòng = 1 level × delta time/WR
+- Summary diff text tự động: "Run B trung bình nhanh/chậm hơn X% so với Run A"
+
+**UI-10** `ui.html` — Difficulty curve chart:
+- Chart mới "Difficulty Curve" trong tab Chart
+- Bar chart difficulty score + line overlay sim_avg_time trend
+- Color-coded points: xanh = ratio OK, đỏ = outlier
+- Tooltip hiển thị board size, arrow count
+
+**UI-09** `ui.html` — Config presets save/load:
+- Dropdown "Presets" với "Save Preset" / "Load Preset" buttons
+- Lưu toàn bộ config (profiles + mix + booster + overhead + level range) vào JS memory
+- Preset name editable khi save
+
+**Phase 2 — Backend additions:**
+
+**UI-05** `ui.html` + `tools/server.py` — Advanced profile editor (= S-10):
+- Toggle "Show Advanced" mở section ẩn với 12 params bổ sung, nhóm:
+  - **Zoom & Viewport**: initial_zoom, preferred_zoom, zoom_in_to_tap_prob, zoom_out_survey_prob, viewport_cleared_zoom_out_prob
+  - **Cognition**: recursive_solve_probability, max_recursion_depth, memory_probability, recheck_probability
+  - **Effort & Quit**: board_scan_time, max_batch_before_pan, frustration_decay_after_solve
+- `tools/server.py::handle_simulate()` dòng 168–179: thêm mapping cho 12 advanced params từ request body vào `PlayerProfile` fields
+
+**UI-07** `ui.html` — Export CSV:
+- Button "Export CSV" ở góc phải tab Table
+- Client-side CSV generation từ results array, trigger download trực tiếp
+- Server đã auto-save CSV vào `report/` folder (có sẵn từ trước)
+
+**UI-06** `ui.html` + `tools/server.py` — Auto-calibrate từ UI:
+- Button "Auto-Calibrate" cạnh "Run Simulation"
+- Client-side iterative binary search trên `timing_multiplier`: chạy N iterations, mỗi lần gửi `/api/simulate` với multiplier mới, so ratio, adjust
+- Progress hiển thị: "Iteration X/N — ratio Xx — adjusting..."
+- Kết quả auto-fill `timing_multiplier` vào config panel
+- `tools/server.py` dòng 138: thêm `sim_config.timing_multiplier = config.get("timing_multiplier", 1.0)`
+
+**Còn lại (2 UI items + 2 S items pending):**
+- UI-01 🔴: Level drill-down — cần endpoint `/api/simulate-detail` + refactor runner.py
+- UI-04 🟡: Cohort mode integration — cần endpoint `/api/simulate-cohort` + UI charts
+- ~~UI-08 🟢: Real-time progress streaming (SSE)~~ → ✅ Done (batch 4)
+- S-12 🟢: Kết nối cohort mode vào UI (= UI-04)
+- S-14 🟢: Unit tests — nên làm khi code ổn định
+
+### 2026-03-22 — Dev (batch 4: SSE + UI fixes)
+
+**3 items hoàn thành: UI-08 + 2 UI improvements theo yêu cầu Game Designer.**
+
+**UI-08** `tools/server.py` + `ui.html` — Real-time progress streaming (SSE):
+- Server: thêm endpoint `POST /api/simulate-stream` trả SSE events thay vì JSON response
+- SSE events: `start` (total levels, config), `progress` (per-level: index, level_id, elapsed, ETA, result), `done` (full results + elapsed)
+- UI: `runSimulation()` chuyển từ `fetch('/api/simulate')` sang `fetch('/api/simulate-stream')` + ReadableStream reader
+- Progress bar thực với phần trăm, elapsed time, ETA — thay thế "check terminal" message cũ
+- Endpoint cũ `/api/simulate` vẫn giữ nguyên để auto-calibrate + backward compatibility
+
+**Level set context info** `ui.html` — Hiển thị dataset đang dùng:
+- Thêm banner `#runContext` phía trên status bar: hiển thị version, level range, cohort size, seed, timing_multiplier
+- Mỗi chart card header thêm subtitle context (version + level range) để biết chart thuộc dataset nào
+- `lastRunConfig` variable lưu config hiện tại, render qua `updateRunContext()` sau mỗi simulation
+
+**Avg Time chart → Line chart** `ui.html` — Đổi chart type:
+- Chart "Avg Time: Sim vs Feed" đổi từ `type: 'bar'` sang `type: 'scatter', mode: 'lines+markers'`
+- Sim line: solid #4a6fa5, Feed line: dotted #f39c12
+- Giữ range slider, responsive layout, hover template
+
+**Còn lại (2 UI items + 2 S items pending):**
+- UI-01 🔴: Level drill-down — cần endpoint `/api/simulate-detail` + refactor runner.py
+- UI-04 🟡: Cohort mode integration — cần endpoint `/api/simulate-cohort` + UI charts
+- S-12 🟢: Kết nối cohort mode vào UI (= UI-04)
+- S-14 🟢: Unit tests — nên làm khi code ổn định
 
 ---
 
